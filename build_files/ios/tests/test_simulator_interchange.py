@@ -34,6 +34,18 @@ def passing_bridges_report() -> dict:
     }
 
 
+def passing_ktx_report() -> dict:
+    return {
+        "check": "ktx",
+        "errors": [],
+        "bridge": {"path": "/app/Frameworks/libbf_intern_ktx_bridge.dylib", "exists": True},
+        "export": {"result": ["FINISHED"], "basisu_used": True,
+                   "ktx2_files": ["source.ktx2"], "magic_ok": True},
+        "import": {"result": ["FINISHED"], "images": [{"name": "source.ktx2", "size": [16, 16]}],
+                   "max_error": 0.04},
+    }
+
+
 class InterchangeHarnessTests(unittest.TestCase):
     def test_every_check_builds_valid_python(self) -> None:
         for check in harness.CHECKS:
@@ -68,6 +80,27 @@ class InterchangeHarnessTests(unittest.TestCase):
             "draco export did not run",
             "meshopt import has 0 triangles, expected 128",
         ])
+
+    def test_a_clean_ktx_run_passes(self) -> None:
+        self.assertEqual(harness.validate(passing_ktx_report(), "Read prefs\n"), [])
+
+    def test_ktx_without_the_bridge_fails(self) -> None:
+        # What the build produces without KTX: the bridge is not built, so the
+        # exporter skips KTX2 and there is nothing to decode on import.
+        report = passing_ktx_report()
+        report["bridge"]["exists"] = False
+        report["export"].update(basisu_used=False, ktx2_files=[], magic_ok=False)
+        report["import"].update(images=[], max_error=None)
+        failures = harness.validate(report, "")
+        self.assertEqual(len(failures), 4, failures)
+        self.assertIn("KTX bridge is missing", failures[0])
+
+    def test_ktx_decoding_errors_are_reported(self) -> None:
+        report = passing_ktx_report()
+        report["import"]["max_error"] = 0.9
+        self.assertEqual(harness.validate(report, ""), ["decoded KTX2 pixels differ by 0.900"])
+        report["import"]["max_error"] = None
+        self.assertIn("wrong size", harness.validate(report, "")[0])
 
     def test_harness_errors_and_tracebacks_fail(self) -> None:
         report = passing_bridges_report()

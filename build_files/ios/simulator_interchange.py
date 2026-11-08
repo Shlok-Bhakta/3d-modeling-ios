@@ -9,6 +9,8 @@ way it fails in the app:
 
 gltf-bridges: export a mesh to glTF with Draco and with meshopt compression,
               then import each file again and compare the geometry.
+ktx: export a textured plane to glTF with KTX2 (BasisU) textures through the
+     KTX bridge, then import it again and compare the decoded pixels.
 """
 
 from __future__ import annotations
@@ -27,6 +29,8 @@ MESH_CODECS = {
     "draco": ("export_draco_mesh_compression_enable", "KHR_draco_mesh_compression"),
     "meshopt": ("export_meshopt_compression_enable", "EXT_meshopt_compression"),
 }
+# BasisU is lossy. Pure quadrant colors come back well inside this per-channel error.
+MAX_PIXEL_ERROR = 0.2
 
 COMMON_EXPR = '''\
 import bpy, json, os, traceback
@@ -108,6 +112,96 @@ def _run():
         entry["imported_triangles"] = _triangles(imported)
 '''
 
+KTX_EXPR = '''\
+SIZE = 16
+COLORS = ((1.0, 0.0, 0.0, 1.0), (0.0, 1.0, 0.0, 1.0), (0.0, 0.0, 1.0, 1.0), (1.0, 1.0, 1.0, 1.0))
+SAMPLES = ((4, 4), (12, 4), (4, 12), (12, 12))
+KTX2_MAGIC = bytes((0xAB, 0x4B, 0x54, 0x58, 0x20, 0x32, 0x30, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A))
+
+
+def _pixel(pixels, x, y):
+    index = (y * SIZE + x) * 4
+    return pixels[index:index + 4]
+
+
+def _source_image():
+    image = bpy.data.images.new("ktx_source", SIZE, SIZE, alpha=True)
+    pixels = []
+    for y in range(SIZE):
+        for x in range(SIZE):
+            pixels.extend(COLORS[(y >= SIZE // 2) * 2 + (x >= SIZE // 2)])
+    image.pixels.foreach_set(pixels)
+    image.filepath_raw = os.path.join(_work, "source.png")
+    image.file_format = "PNG"
+    image.save()
+    return image, pixels
+
+
+def _textured_plane(image):
+    material = bpy.data.materials.new("ktx_material")
+    tree = material.node_tree
+    texture = tree.nodes.new("ShaderNodeTexImage")
+    texture.image = image
+    shader = next(node for node in tree.nodes if node.type == "BSDF_PRINCIPLED")
+    tree.links.new(texture.outputs["Color"], shader.inputs["Base Color"])
+    mesh = bpy.data.meshes.new("ktx_plane")
+    mesh.from_pydata([(-1, -1, 0), (1, -1, 0), (1, 1, 0), (-1, 1, 0)], [], [(0, 1, 2, 3)])
+    uv_layer = mesh.uv_layers.new()
+    for loop, uv in zip(uv_layer.data, ((0, 0), (1, 0), (1, 1), (0, 1))):
+        loop.uv = uv
+    mesh.materials.append(material)
+    plane = bpy.data.objects.new("ktx_plane", mesh)
+    bpy.context.scene.collection.objects.link(plane)
+
+
+def _run():
+    from io_scene_gltf2.io.com.library import dll_path
+    bridge = dll_path("bf_intern_ktx_bridge", "KTX")
+    _report["bridge"] = {"path": str(bridge), "exists": bool(bridge and bridge.is_file())}
+
+    image, source = _source_image()
+    _textured_plane(image)
+    gltf_path = os.path.join(_work, "scene.gltf")
+    with _window_override():
+        result = bpy.ops.export_scene.gltf(
+            filepath=gltf_path, export_format="GLTF_SEPARATE",
+            export_image_add_compressed_images=True, export_compressed_images_type="KTX2",
+            export_compressed_images_fallback=True)
+    export = {"result": sorted(result), "ktx2_files": [], "magic_ok": False}
+    _report["export"] = export
+    document = _gltf_document(gltf_path)
+    export["basisu_used"] = "KHR_texture_basisu" in document.get("extensionsUsed", [])
+    for entry in document.get("images", []):
+        if entry.get("uri", "").endswith(".ktx2"):
+            path = os.path.join(_work, entry["uri"])
+            export["ktx2_files"].append(entry["uri"])
+            with open(path, "rb") as handle:
+                export["magic_ok"] = handle.read(len(KTX2_MAGIC)) == KTX2_MAGIC
+
+    before = set(bpy.data.objects.keys())
+    with _window_override():
+        result = bpy.ops.import_scene.gltf(filepath=gltf_path, import_ktx_texture=True)
+    # The importer renames images after the glTF image. A KTX2 texture it decoded is a packed
+    # image; one it failed to read is a placeholder pointing at the .ktx2 file.
+    imported = []
+    for name in bpy.data.objects.keys():
+        obj = bpy.data.objects[name]
+        if name in before or obj.type != "MESH":
+            continue
+        for material in obj.data.materials:
+            imported += [node.image for node in material.node_tree.nodes
+                         if node.type == "TEX_IMAGE" and node.image and node.image.packed_file]
+    entry = {"result": sorted(result), "images": [], "max_error": None}
+    _report["import"] = entry
+    for decoded in imported:
+        entry["images"].append({"name": decoded.name, "size": list(decoded.size)})
+    if imported and tuple(imported[0].size) == (SIZE, SIZE):
+        pixels = list(imported[0].pixels)
+        entry["max_error"] = max(
+            abs(a - b) for x, y in SAMPLES
+            for a, b in zip(_pixel(pixels, x, y), _pixel(source, x, y)))
+'''
+
 RUNNER_EXPR = '''\
 
 
@@ -125,6 +219,7 @@ bpy.app.timers.register(_tick, first_interval=3.0)
 
 CHECKS = {
     "gltf-bridges": f"MESH_CODECS = {MESH_CODECS!r}\n" + GLTF_BRIDGES_EXPR,
+    "ktx": KTX_EXPR,
 }
 
 
@@ -160,8 +255,37 @@ def validate_gltf_bridges(report: dict) -> list[str]:
     return failures
 
 
+def validate_ktx(report: dict) -> list[str]:
+    failures = []
+    bridge = report.get("bridge", {})
+    if not bridge.get("exists"):
+        failures.append(f"KTX bridge is missing at {bridge.get('path')}")
+    export = report.get("export")
+    if export is None:
+        return failures + ["glTF export did not run"]
+    if export.get("result") != ["FINISHED"]:
+        failures.append(f"glTF export returned {export.get('result')}")
+    if not export.get("basisu_used"):
+        failures.append("glTF export did not use KHR_texture_basisu")
+    if not export.get("ktx2_files"):
+        failures.append("glTF export wrote no KTX2 texture")
+    elif not export.get("magic_ok"):
+        failures.append("the exported texture is not a KTX2 file")
+    imported = report.get("import")
+    if imported is None:
+        return failures + ["glTF import did not run"]
+    if not imported.get("images"):
+        failures.append("glTF import decoded no KTX2 texture")
+    elif imported.get("max_error") is None:
+        failures.append(f"decoded KTX2 texture has the wrong size: {imported['images']}")
+    elif imported["max_error"] > MAX_PIXEL_ERROR:
+        failures.append(f"decoded KTX2 pixels differ by {imported['max_error']:.3f}")
+    return failures
+
+
 VALIDATORS = {
     "gltf-bridges": validate_gltf_bridges,
+    "ktx": validate_ktx,
 }
 
 

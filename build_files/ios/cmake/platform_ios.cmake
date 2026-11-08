@@ -312,6 +312,13 @@ if(WITH_APPLE_CROSSPLATFORM)
     set(meshoptimizer_DIR "${LIBDIR}/meshoptimizer/lib/cmake/meshoptimizer")
     find_package(meshoptimizer REQUIRED CONFIG)
   endif()
+  if(WITH_KTX)
+    # The static KTX target links `zstd::libzstd`, which its package config does not import.
+    set(zstd_DIR "${LIBDIR}/zstd/lib/cmake/zstd")
+    find_package(zstd REQUIRED CONFIG)
+    set(Ktx_DIR "${LIBDIR}/ktx/lib/cmake/ktx")
+    find_package(Ktx REQUIRED CONFIG)
+  endif()
 
   string(APPEND PLATFORM_CFLAGS " -pipe -funsigned-char -fno-strict-aliasing -ffp-contract=off")
   set(PLATFORM_LINKFLAGS "\
