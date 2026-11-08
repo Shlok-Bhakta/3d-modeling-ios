@@ -16,7 +16,7 @@ def dll_path(lib_name, lib_display_name) -> Path | None:
 
     if sys.platform == 'win32':
         library_name = '{}.dll'.format(lib_name)
-    elif sys.platform == 'darwin':
+    elif sys.platform in {'darwin', 'ios'}:
         library_name = 'lib{}.dylib'.format(lib_name)
         # iOS requires embedded code in Blender.app/Frameworks. Its main
         # executable is at the bundle root, unlike macOS's Contents/MacOS.
