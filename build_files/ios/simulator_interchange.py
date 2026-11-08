@@ -11,6 +11,8 @@ gltf-bridges: export a mesh to glTF with Draco and with meshopt compression,
               then import each file again and compare the geometry.
 ktx: export a textured plane to glTF with KTX2 (BasisU) textures through the
      KTX bridge, then import it again and compare the decoded pixels.
+otio: export a VSE timeline with a color and an image strip to OpenTimelineIO,
+      then import it again and compare the strips.
 """
 
 from __future__ import annotations
@@ -202,6 +204,84 @@ def _run():
             for a, b in zip(_pixel(pixels, x, y), _pixel(source, x, y)))
 '''
 
+OTIO_EXPR = '''\
+def _operator_exists(name):
+    try:
+        getattr(bpy.ops.wm, name).get_rna_type()
+    except (AttributeError, KeyError):
+        return False
+    return True
+
+
+def _media_png():
+    image = bpy.data.images.new("otio_frame", 32, 32)
+    image.pixels.foreach_set([0.2, 0.4, 0.8, 1.0] * 32 * 32)
+    path = os.path.join(_work, "media", "frame.png")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    image.filepath_raw = path
+    image.file_format = "PNG"
+    image.save()
+    return path
+
+
+def _strips(editor):
+    summary = {}
+    for strip in editor.strips:
+        entry = {"type": strip.type, "channel": strip.channel,
+                 "start": strip.frame_final_start, "end": strip.frame_final_end}
+        if strip.type == "IMAGE":
+            entry["media"] = os.path.normpath(os.path.join(
+                bpy.path.abspath(strip.directory), strip.elements[0].filename))
+        summary[strip.name] = entry
+    return summary
+
+
+def _clip_names(node, names):
+    if isinstance(node, dict):
+        if str(node.get("OTIO_SCHEMA", "")).startswith("Clip."):
+            names.append(node.get("name"))
+        for value in node.values():
+            _clip_names(value, names)
+    elif isinstance(node, list):
+        for value in node:
+            _clip_names(value, names)
+    return names
+
+
+def _run():
+    _report["operators"] = {name: _operator_exists(name) for name in ("otio_export", "otio_import")}
+    if not all(_report["operators"].values()):
+        return
+
+    scene = bpy.context.scene
+    window = bpy.context.window_manager.windows[0]
+    window.workspace.sequencer_scene = scene
+    editor = scene.sequence_editor_create()
+    editor.strips.new_effect(name="Backdrop", type="COLOR", channel=1, frame_start=1, length=48)
+    still = editor.strips.new_image(name="Still", filepath=_media_png(), channel=2, frame_start=12)
+    still.frame_final_duration = 20
+    _report["expected"] = _strips(editor)
+
+    otio_path = os.path.join(_work, "timeline.otio")
+    with _window_override():
+        export = {"result": sorted(bpy.ops.wm.otio_export(filepath=otio_path))}
+    _report["export"] = export
+    with open(otio_path, encoding="utf-8") as handle:
+        document = json.load(handle)
+    export["schema"] = document.get("OTIO_SCHEMA")
+    export["clips"] = sorted(_clip_names(document, []))
+
+    before = set(bpy.data.scenes.keys())
+    with _window_override():
+        result = bpy.ops.wm.otio_import(filepath=otio_path)
+    created = [bpy.data.scenes[name] for name in bpy.data.scenes.keys() if name not in before]
+    _report["import"] = {
+        "result": sorted(result),
+        "scenes": [created_scene.name for created_scene in created],
+        "strips": _strips(created[0].sequence_editor) if created and created[0].sequence_editor else {},
+    }
+'''
+
 RUNNER_EXPR = '''\
 
 
@@ -220,6 +300,7 @@ bpy.app.timers.register(_tick, first_interval=3.0)
 CHECKS = {
     "gltf-bridges": f"MESH_CODECS = {MESH_CODECS!r}\n" + GLTF_BRIDGES_EXPR,
     "ktx": KTX_EXPR,
+    "otio": OTIO_EXPR,
 }
 
 
@@ -283,9 +364,35 @@ def validate_ktx(report: dict) -> list[str]:
     return failures
 
 
+def validate_otio(report: dict) -> list[str]:
+    missing = [name for name, found in report.get("operators", {}).items() if not found]
+    if missing or not report.get("operators"):
+        return [f"OpenTimelineIO operators are not registered: {missing or 'none reported'}"]
+    failures = []
+    expected = report.get("expected", {})
+    export = report.get("export", {})
+    if export.get("result") != ["FINISHED"]:
+        failures.append(f"OTIO export returned {export.get('result')}")
+    if not str(export.get("schema", "")).startswith("Timeline."):
+        failures.append(f"the exported file is not an OTIO timeline: {export.get('schema')}")
+    if export.get("clips") != sorted(expected):
+        failures.append(f"OTIO export wrote clips {export.get('clips')}, expected {sorted(expected)}")
+    imported = report.get("import", {})
+    if imported.get("result") != ["FINISHED"]:
+        failures.append(f"OTIO import returned {imported.get('result')}")
+    if len(imported.get("scenes", [])) != 1:
+        failures.append(f"OTIO import created scenes {imported.get('scenes')}")
+    for name, strip in sorted(expected.items()):
+        got = imported.get("strips", {}).get(name)
+        if got != strip:
+            failures.append(f"imported strip {name} is {got}, expected {strip}")
+    return failures
+
+
 VALIDATORS = {
     "gltf-bridges": validate_gltf_bridges,
     "ktx": validate_ktx,
+    "otio": validate_otio,
 }
 
 

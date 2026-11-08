@@ -46,6 +46,22 @@ def passing_ktx_report() -> dict:
     }
 
 
+def passing_otio_report() -> dict:
+    strips = {
+        "Backdrop": {"type": "COLOR", "channel": 1, "start": 1, "end": 49},
+        "Still": {"type": "IMAGE", "channel": 2, "start": 12, "end": 32,
+                  "media": "/tmp/otio-roundtrip/media/frame.png"},
+    }
+    return {
+        "check": "otio",
+        "errors": [],
+        "operators": {"otio_export": True, "otio_import": True},
+        "expected": strips,
+        "export": {"result": ["FINISHED"], "schema": "Timeline.1", "clips": ["Backdrop", "Still"]},
+        "import": {"result": ["FINISHED"], "scenes": ["Timeline"], "strips": copy.deepcopy(strips)},
+    }
+
+
 class InterchangeHarnessTests(unittest.TestCase):
     def test_every_check_builds_valid_python(self) -> None:
         for check in harness.CHECKS:
@@ -101,6 +117,25 @@ class InterchangeHarnessTests(unittest.TestCase):
         self.assertEqual(harness.validate(report, ""), ["decoded KTX2 pixels differ by 0.900"])
         report["import"]["max_error"] = None
         self.assertIn("wrong size", harness.validate(report, "")[0])
+
+    def test_a_clean_otio_run_passes(self) -> None:
+        self.assertEqual(harness.validate(passing_otio_report(), "Read prefs\n"), [])
+
+    def test_otio_without_the_library_fails(self) -> None:
+        # What the build produces without OpenTimelineIO: the operators are not registered.
+        report = {"check": "otio", "errors": [],
+                  "operators": {"otio_export": False, "otio_import": False}}
+        self.assertEqual(harness.validate(report, ""), [
+            "OpenTimelineIO operators are not registered: ['otio_export', 'otio_import']"])
+
+    def test_otio_round_trip_differences_fail(self) -> None:
+        report = passing_otio_report()
+        report["export"]["clips"] = ["Backdrop"]
+        report["import"]["strips"]["Still"]["end"] = 40
+        failures = harness.validate(report, "")
+        self.assertEqual(len(failures), 2, failures)
+        self.assertIn("wrote clips ['Backdrop']", failures[0])
+        self.assertIn("imported strip Still", failures[1])
 
     def test_harness_errors_and_tracebacks_fail(self) -> None:
         report = passing_bridges_report()

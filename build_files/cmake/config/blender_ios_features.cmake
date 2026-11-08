@@ -41,7 +41,5 @@ set(WITH_INSTALL_PORTABLE    ON  CACHE BOOL "" FORCE)
 # policy. Cycles CPU, Metal, Embree, path guiding, and denoising remain enabled.
 set(WITH_CYCLES_OSL          OFF CACHE BOOL "" FORCE)
 
-# Blender 5.3 adds these optional libraries. They are not cross-built for iOS yet:
-# Jolt has no users in 5.3, and OpenTimelineIO only backs VSE timeline import/export.
+# Blender 5.3 bundles Jolt, but nothing uses it yet, so it is not cross-built for iOS.
 set(WITH_JOLT                OFF CACHE BOOL "" FORCE)
-set(WITH_OPENTIMELINEIO      OFF CACHE BOOL "" FORCE)

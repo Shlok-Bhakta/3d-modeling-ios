@@ -42,7 +42,7 @@ class KtxProfileTests(unittest.TestCase):
 
     def test_ci_builds_ktx(self) -> None:
         workflow = (REPOSITORY / ".github" / "workflows" / "ios-pr-preview.yml").read_text()
-        self.assertIn(";USD;KTX\"", workflow)
+        self.assertIn(";USD;KTX", workflow)
         self.assertIn("external_ktx \\", workflow)
 
 

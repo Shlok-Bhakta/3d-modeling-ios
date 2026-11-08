@@ -319,6 +319,14 @@ if(WITH_APPLE_CROSSPLATFORM)
     set(Ktx_DIR "${LIBDIR}/ktx/lib/cmake/ktx")
     find_package(Ktx REQUIRED CONFIG)
   endif()
+  if(WITH_OPENTIMELINEIO)
+    # The static OpenTimelineIO package finds its own dependencies.
+    set(OpenTime_DIR "${LIBDIR}/opentimelineio/lib/cmake/opentime")
+    set(Imath_DIR "${LIBDIR}/imath/lib/cmake/Imath")
+    set(minizip-ng_DIR "${LIBDIR}/minizipng/lib/cmake/minizip")
+    set(OpenTimelineIO_DIR "${LIBDIR}/opentimelineio/lib/cmake/opentimelineio")
+    find_package(OpenTimelineIO REQUIRED CONFIG)
+  endif()
 
   string(APPEND PLATFORM_CFLAGS " -pipe -funsigned-char -fno-strict-aliasing -ffp-contract=off")
   set(PLATFORM_LINKFLAGS "\
