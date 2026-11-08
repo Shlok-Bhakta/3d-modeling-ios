@@ -28,7 +28,7 @@ void call_export_hooks(Depsgraph * /*depsgraph*/,
 }
 
 void call_material_export_hooks(pxr::UsdStageRefPtr /*stage*/,
-                                Material * /*material*/,
+                                const Material * /*material*/,
                                 const pxr::UsdShadeMaterial & /*usd_material*/,
                                 const USDExportParams & /*export_params*/,
                                 ReportList * /*reports*/)

@@ -974,7 +974,7 @@ def _download_queued_items(
     in_flight_downloads = RequestDescriptionCounter()
 
     # Cancellations of currently-downloading downloads, that still have to be processed by their downloader thread.
-    # These requests can be safely requeued (for the same or another worker), but of course the running one will be
+    # These requests can be safely re-queued (for the same or another worker), but of course the running one will be
     # cancelled and the new request will start from scratch.
     in_flight_cancellations = RequestDescriptionCounter()
 
@@ -1096,7 +1096,7 @@ def _download_queued_items(
         unqueued = unqueue_request(request_to_cancel)
 
         if request_to_cancel in in_flight_downloads:
-            # Only queue cancelation for already-in-flight downloads, as the item will only be popped off the cancel
+            # Only queue cancellation for already-in-flight downloads, as the item will only be popped off the cancel
             # queue when a worker is done with it. Without a worker thread, the item would be queued indefinitely,
             # interfering with future queues of the same download.
             cancel_queue.add(request_to_cancel)
@@ -1550,7 +1550,7 @@ class MetadataProviderFilesystem(MetadataProvider):
             # need to do a conditional download of a zero-bytes file. It is more
             # likely that something went wrong and a file got truncated.
             #
-            # And even if the file is of the correct size, non-conditinally
+            # And even if the file is of the correct size, non-conditionally
             # doing the same request for the empty file will require less data
             # than including the headers necessary for a conditional download.
             return False
@@ -1863,7 +1863,12 @@ def _cleanup_main_file_attribute() -> Generator[None]:
     # that will cause problems. Python dunder variables like this can
     # trigger all kinds of unknown magics, so they should be left alone
     # as much as possible.
-    main_module_file: str = getattr(main_module, '__file__', '') or ''
+    try:
+        main_module_file: str = getattr(main_module, '__file__')
+    except AttributeError:
+        # No __main__.__file__ is fine.
+        yield
+        return
 
     # Blender text datablocks don't exist on disk, and also in some Python
     # invocations from the C++ code there is a non-path string in the `__file__`

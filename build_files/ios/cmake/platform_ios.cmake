@@ -254,7 +254,7 @@ if(WITH_APPLE_CROSSPLATFORM)
     )
   endif()
 
-  if(WITH_CYCLES AND WITH_CYCLES_EMBREE)
+  if(WITH_EMBREE)
     set(embree_DIR "${LIBDIR}/embree/lib/cmake/embree-4.4.1")
     find_package(Embree 4.0.0 REQUIRED)
   endif()

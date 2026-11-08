@@ -19,6 +19,7 @@
 
 #include "mtl_backend.hh"
 #include "mtl_context.hh"
+#include "mtl_debug.hh"
 #include "mtl_texture.hh"
 
 /* Utility file for secondary functionality which supports mtl_texture.mm. */
@@ -27,6 +28,8 @@ extern char datatoc_compute_texture_update_msl[];
 extern char datatoc_compute_texture_read_msl[];
 
 namespace blender::gpu {
+
+static CLG_LogRef LOG = {"gpu.metal"};
 
 /* -------------------------------------------------------------------- */
 /** \name Texture Utility Functions
@@ -259,8 +262,8 @@ bool mtl_format_supports_blending(MTLPixelFormat format)
  * \{ */
 
 id<MTLComputePipelineState> gpu::MTLTexture::mtl_texture_update_impl(
-    TextureUpdateRoutineSpecialisation specialization_params,
-    Map<TextureUpdateRoutineSpecialisation, id<MTLComputePipelineState>> &specialization_cache,
+    TextureUpdateRoutineSpecialization specialization_params,
+    Map<TextureUpdateRoutineSpecialization, id<MTLComputePipelineState>> &specialization_cache,
     GPUTextureType texture_type)
 {
   /* Check whether the Kernel exists. */
@@ -307,7 +310,9 @@ id<MTLComputePipelineState> gpu::MTLTexture::mtl_texture_update_impl(
       if ([[error localizedDescription] rangeOfString:@"Compilation succeeded"].location ==
           NSNotFound)
       {
-        NSLog(@"Compile Error - Metal Shader Library error %@ ", error);
+        CLOG_ERROR(&LOG,
+                   "Compile Error - Metal Shader Library error %s",
+                   [[error localizedDescription] UTF8String]);
         BLI_assert(false);
         return nil;
       }
@@ -324,7 +329,9 @@ id<MTLComputePipelineState> gpu::MTLTexture::mtl_texture_update_impl(
         newComputePipelineStateWithFunction:temp_compute_function
                                       error:&error];
     if (error || compute_pso == nil) {
-      NSLog(@"Failed to prepare texture_update MTLComputePipelineState %@", error);
+      CLOG_ERROR(&LOG,
+                 "Failed to prepare texture_update MTLComputePipelineState %s",
+                 [[error localizedDescription] UTF8String]);
       BLI_assert(false);
     }
 
@@ -338,7 +345,7 @@ id<MTLComputePipelineState> gpu::MTLTexture::mtl_texture_update_impl(
 }
 
 id<MTLComputePipelineState> gpu::MTLTexture::texture_update_1d_get_kernel(
-    TextureUpdateRoutineSpecialisation specialization)
+    TextureUpdateRoutineSpecialization specialization)
 {
   MTLContext *mtl_context = MTLContext::get();
   BLI_assert(mtl_context != nullptr);
@@ -348,7 +355,7 @@ id<MTLComputePipelineState> gpu::MTLTexture::texture_update_1d_get_kernel(
 }
 
 id<MTLComputePipelineState> gpu::MTLTexture::texture_update_1d_array_get_kernel(
-    TextureUpdateRoutineSpecialisation specialization)
+    TextureUpdateRoutineSpecialization specialization)
 {
   MTLContext *mtl_context = MTLContext::get();
   BLI_assert(mtl_context != nullptr);
@@ -359,7 +366,7 @@ id<MTLComputePipelineState> gpu::MTLTexture::texture_update_1d_array_get_kernel(
 }
 
 id<MTLComputePipelineState> gpu::MTLTexture::texture_update_2d_get_kernel(
-    TextureUpdateRoutineSpecialisation specialization)
+    TextureUpdateRoutineSpecialization specialization)
 {
   MTLContext *mtl_context = MTLContext::get();
   BLI_assert(mtl_context != nullptr);
@@ -369,7 +376,7 @@ id<MTLComputePipelineState> gpu::MTLTexture::texture_update_2d_get_kernel(
 }
 
 id<MTLComputePipelineState> gpu::MTLTexture::texture_update_2d_array_get_kernel(
-    TextureUpdateRoutineSpecialisation specialization)
+    TextureUpdateRoutineSpecialization specialization)
 {
   MTLContext *mtl_context = MTLContext::get();
   BLI_assert(mtl_context != nullptr);
@@ -380,7 +387,7 @@ id<MTLComputePipelineState> gpu::MTLTexture::texture_update_2d_array_get_kernel(
 }
 
 id<MTLComputePipelineState> gpu::MTLTexture::texture_update_3d_get_kernel(
-    TextureUpdateRoutineSpecialisation specialization)
+    TextureUpdateRoutineSpecialization specialization)
 {
   MTLContext *mtl_context = MTLContext::get();
   BLI_assert(mtl_context != nullptr);
@@ -393,7 +400,7 @@ id<MTLComputePipelineState> gpu::MTLTexture::texture_update_3d_get_kernel(
  * Currently does not appear to be hit. */
 
 gpu::Shader *gpu::MTLTexture::depth_2d_update_sh_get(
-    DepthTextureUpdateRoutineSpecialisation specialization)
+    DepthTextureUpdateRoutineSpecialization specialization)
 {
 
   /* Check whether the Kernel exists. */
@@ -456,7 +463,7 @@ void gpu::MTLTexture::update_sub_depth_2d(
   TextureFormat format = (is_float) ? TextureFormat::SFLOAT_32 : TextureFormat::SINT_32;
 
   /* Shader key - Add parameters here for different configurations. */
-  DepthTextureUpdateRoutineSpecialisation specialization;
+  DepthTextureUpdateRoutineSpecialization specialization;
   switch (type) {
     case GPU_DATA_FLOAT:
       specialization.data_mode = MTL_DEPTH_UPDATE_MODE_FLOAT;
@@ -546,8 +553,8 @@ void gpu::MTLTexture::update_sub_depth_2d(
  * \{ */
 
 id<MTLComputePipelineState> gpu::MTLTexture::mtl_texture_read_impl(
-    TextureReadRoutineSpecialisation specialization_params,
-    Map<TextureReadRoutineSpecialisation, id<MTLComputePipelineState>> &specialization_cache,
+    TextureReadRoutineSpecialization specialization_params,
+    Map<TextureReadRoutineSpecialization, id<MTLComputePipelineState>> &specialization_cache,
     GPUTextureType texture_type)
 {
   /* Check whether the Kernel exists. */
@@ -624,7 +631,9 @@ id<MTLComputePipelineState> gpu::MTLTexture::mtl_texture_read_impl(
       if ([[error localizedDescription] rangeOfString:@"Compilation succeeded"].location ==
           NSNotFound)
       {
-        NSLog(@"Compile Error - Metal Shader Library error %@ ", error);
+        CLOG_ERROR(&LOG,
+                   "Compile Error - Metal Shader Library error %s",
+                   [[error localizedDescription] UTF8String]);
         BLI_assert(false);
         return nil;
       }
@@ -641,7 +650,9 @@ id<MTLComputePipelineState> gpu::MTLTexture::mtl_texture_read_impl(
         newComputePipelineStateWithFunction:temp_compute_function
                                       error:&error];
     if (error || compute_pso == nil) {
-      NSLog(@"Failed to prepare texture_read MTLComputePipelineState %@", error);
+      CLOG_ERROR(&LOG,
+                 "Failed to prepare texture_read MTLComputePipelineState %s",
+                 [[error localizedDescription] UTF8String]);
       BLI_assert(false);
       return nil;
     }
@@ -656,7 +667,7 @@ id<MTLComputePipelineState> gpu::MTLTexture::mtl_texture_read_impl(
 }
 
 id<MTLComputePipelineState> gpu::MTLTexture::texture_read_2d_get_kernel(
-    TextureReadRoutineSpecialisation specialization)
+    TextureReadRoutineSpecialization specialization)
 {
   MTLContext *mtl_context = MTLContext::get();
   BLI_assert(mtl_context != nullptr);
@@ -666,7 +677,7 @@ id<MTLComputePipelineState> gpu::MTLTexture::texture_read_2d_get_kernel(
 }
 
 id<MTLComputePipelineState> gpu::MTLTexture::texture_read_2d_array_get_kernel(
-    TextureReadRoutineSpecialisation specialization)
+    TextureReadRoutineSpecialization specialization)
 {
   MTLContext *mtl_context = MTLContext::get();
   BLI_assert(mtl_context != nullptr);
@@ -676,7 +687,7 @@ id<MTLComputePipelineState> gpu::MTLTexture::texture_read_2d_array_get_kernel(
 }
 
 id<MTLComputePipelineState> gpu::MTLTexture::texture_read_1d_get_kernel(
-    TextureReadRoutineSpecialisation specialization)
+    TextureReadRoutineSpecialization specialization)
 {
   MTLContext *mtl_context = MTLContext::get();
   BLI_assert(mtl_context != nullptr);
@@ -686,7 +697,7 @@ id<MTLComputePipelineState> gpu::MTLTexture::texture_read_1d_get_kernel(
 }
 
 id<MTLComputePipelineState> gpu::MTLTexture::texture_read_1d_array_get_kernel(
-    TextureReadRoutineSpecialisation specialization)
+    TextureReadRoutineSpecialization specialization)
 {
   MTLContext *mtl_context = MTLContext::get();
   BLI_assert(mtl_context != nullptr);
@@ -696,7 +707,7 @@ id<MTLComputePipelineState> gpu::MTLTexture::texture_read_1d_array_get_kernel(
 }
 
 id<MTLComputePipelineState> gpu::MTLTexture::texture_read_3d_get_kernel(
-    TextureReadRoutineSpecialisation specialization)
+    TextureReadRoutineSpecialization specialization)
 {
   MTLContext *mtl_context = MTLContext::get();
   BLI_assert(mtl_context != nullptr);

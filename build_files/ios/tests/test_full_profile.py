@@ -106,7 +106,7 @@ class FullProfileTests(unittest.TestCase):
         features = IOS_FEATURES.read_text()
         platform = APPLE_PLATFORM.read_text()
         self.assertNotIn("set(WITH_OPENSUBDIV", features)
-        self.assertNotIn("set(WITH_CYCLES_EMBREE", features)
+        self.assertNotIn("set(WITH_EMBREE", features)
         self.assertNotIn("set(WITH_CYCLES_PATH_GUIDING", features)
         self.assertIn("set(WITH_CYCLES_OSL", features)
         self.assertIn("set(WITH_HYDRA", features)
@@ -124,7 +124,7 @@ class FullProfileTests(unittest.TestCase):
         for filename in ("blender_ios_sim.cmake", "blender_ios_device.cmake"):
             with self.subTest(filename=filename):
                 profile = (CONFIG_DIRECTORY / filename).read_text()
-                self.assertIn("set(WITH_CYCLES_EMBREE       ON", profile)
+                self.assertIn("set(WITH_EMBREE              ON", profile)
                 self.assertIn("set(WITH_CYCLES_PATH_GUIDING ON", profile)
 
     def test_quadriflow_keeps_remeshing_without_ios_subprocesses(self) -> None:
@@ -140,6 +140,7 @@ class FullProfileTests(unittest.TestCase):
     def test_usd_uses_static_apple_embedded_metal_profile(self) -> None:
         recipe = USD_RECIPE.read_text()
         self.assertIn("set(USD_BUILD_SHARED_LIBS OFF)", recipe)
+        self.assertIn("-DPXR_BUILD_APPLE_FRAMEWORK=OFF", recipe)
         self.assertIn("set(USD_ENABLE_METAL_SUPPORT ON)", recipe)
         self.assertIn("set(USD_ENABLE_GL_SUPPORT OFF)", recipe)
         self.assertIn("set(USD_ENABLE_PYTHON_SUPPORT OFF)", recipe)
@@ -148,6 +149,10 @@ class FullProfileTests(unittest.TestCase):
         self.assertIn("if (NOT TARGET hdSt)", no_gl_patch)
         self.assertIn("if (NOT TARGET hdx)", no_gl_patch)
         self.assertIn("if (NOT TARGET usdImagingGL)", no_gl_patch)
+        # USD 26.08 links hgiInterop's garch dependency even when garch is not built.
+        self.assertIn("+++ b/pxr/imaging/hgiInterop/CMakeLists.txt", no_gl_patch)
+        self.assertIn("-list(APPEND optionalLibraries garch)", no_gl_patch)
+        self.assertIn("+    list(APPEND optionalLibraries garch)", no_gl_patch)
         usd_cmake = USD_CMAKE.read_text()
         self.assertIn("BLENDER_PLATFORM_USD_HOOK_SOURCE", usd_cmake)
         self.assertIn("intern/usd_hook_stub.cc", APPLE_PLATFORM.read_text())
@@ -174,9 +179,10 @@ class FullProfileTests(unittest.TestCase):
 
     def test_flac_ios_build_uses_cmake_without_versioned_automake_tools(self) -> None:
         recipe = FLAC_RECIPE.read_text()
-        self.assertIn("NOT WIN32 AND NOT WITH_APPLE_CROSSPLATFORM", recipe)
+        self.assertIn('CMAKE_GENERATOR "Ninja"', recipe)
+        self.assertNotIn("${CONFIGURE_COMMAND}", recipe)
+        self.assertIn("if(WITH_APPLE_CROSSPLATFORM)", recipe)
         self.assertIn("-DOGG_LIBRARY=${LIBDIR}/ogg/lib/libogg.a", recipe)
-        self.assertIn("flac_no_ios_microbench.diff", recipe)
 
     def test_materialx_ios_omits_disabled_python_dependencies(self) -> None:
         recipe = MATERIALX_RECIPE.read_text()

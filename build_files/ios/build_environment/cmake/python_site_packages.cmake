@@ -41,7 +41,6 @@ set(_python_site_package_requirements
   meson==${MESON_VERSION}
   attrs==${ATTRS_VERSION}
   cattrs==${CATTRS_VERSION}
-  fastjsonschema==${FASTJSONSCHEMA_VERSION}
   typing-extensions==${TYPING_EXTENSIONS_VERSION}
   tomli-w==${TOMLI_W_VERSION}
 )

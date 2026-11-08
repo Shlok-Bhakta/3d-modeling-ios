@@ -4,8 +4,8 @@
 
 #include "BKE_context.hh"
 #include "BLI_path_utils.hh"
-#include "BLI_string.h"
-#include "BLI_utildefines.h"
+#include "BLI_string.hh"
+#include "BLI_utildefines.hh"
 #include "BPY_extern_run.hh"
 
 namespace blender {
