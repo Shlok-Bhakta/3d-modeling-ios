@@ -32,6 +32,7 @@ import enum
 import hashlib
 import logging
 import os
+import sys
 import time
 import zlib  # For streaming gzip decompression.
 from collections.abc import Callable, Generator

@@ -30,7 +30,8 @@ import time
 from pathlib import Path
 
 
-BUNDLE_ID = "com.marginallybetterapps.modeling3d"
+# Read from the app under test in main(); builds and rebrands use different identifiers.
+BUNDLE_ID = ""
 DEVICE_TYPE = "com.apple.CoreSimulator.SimDeviceType.iPad-Pro-13-inch-M5-12GB"
 CORNER_KEY = "GHOST_IOSModifierBeltCorner"
 TOP_LEFT = 0
@@ -240,11 +241,18 @@ def wait_responsive(heartbeat: Path, steady: float = 3.0, timeout: float = 180.0
     raise RuntimeError("Blender did not become responsive")
 
 
+def bundle_identifier(app: Path) -> str:
+    with (app / "Info.plist").open("rb") as handle:
+        return plistlib.load(handle)["CFBundleIdentifier"]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--app", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
+    global BUNDLE_ID
+    BUNDLE_ID = bundle_identifier(args.app)
     output = args.output
     output.mkdir(parents=True, exist_ok=True)
 

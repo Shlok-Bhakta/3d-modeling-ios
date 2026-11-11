@@ -48,7 +48,7 @@ const char *GHOST_SystemPathsCocoa::getSystemDir(int /* version */, const char *
  * bring preferences, add-ons and extensions from a computer. The folder is resolved once, moving
  * the hidden `Application Support/Blender` folder used by earlier builds.
  */
-static NSString *IOS_user_settings_root()
+static NSString *IOS_user_settings_root(const char *versionstr)
 {
   static NSString *root_path = nil;
   static dispatch_once_t once;
@@ -62,7 +62,8 @@ static NSString *IOS_user_settings_root()
                                                 inDomains:NSUserDomainMask]
                                .firstObject;
       NSURL *legacy_url = [support_url URLByAppendingPathComponent:@"Blender" isDirectory:YES];
-      NSURL *root_url = GHOST_IOSSettings_prepareRoot(documents_url, legacy_url);
+      NSURL *root_url = GHOST_IOSSettings_prepareRoot(
+          documents_url, legacy_url, versionstr ? @(versionstr) : nil);
       root_path = [root_url.path copy];
     }
   });
@@ -72,7 +73,7 @@ static NSString *IOS_user_settings_root()
 const char *GHOST_SystemPathsCocoa::getUserDir(int /* version */, const char *versionstr) const
 {
   static char tempPath[512] = "";
-  NSString *root_path = IOS_user_settings_root();
+  NSString *root_path = IOS_user_settings_root(versionstr);
   if (root_path == nil) {
     return nullptr;
   }

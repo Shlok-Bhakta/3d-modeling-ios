@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import plistlib
 import shutil
 import subprocess
 import sys
@@ -26,7 +27,8 @@ import time
 from pathlib import Path
 
 
-BUNDLE_ID = "com.marginallybetterapps.modeling3d"
+# Read from the app under test in main(); builds and rebrands use different identifiers.
+BUNDLE_ID = ""
 DEVICE_TYPE = "com.apple.CoreSimulator.SimDeviceType.iPad-Pro-13-inch-M5-12GB"
 CASES = ("migrate", "fresh", "upgrade")
 
@@ -202,14 +204,36 @@ def exercise(app: Path, udid: str, case: str, output: Path, version: str, previo
     print(f"[{case}] PASS", flush=True)
 
 
+def bundle_identifier(app: Path) -> str:
+    with (app / "Info.plist").open("rb") as handle:
+        return plistlib.load(handle)["CFBundleIdentifier"]
+
+
+def app_versions(app: Path) -> tuple[str, str]:
+    """The app's Blender version folder, such as 5.3, and the one before it, such as 5.2.
+
+    The version before a major release such as 6.0 is unknown here, so it is empty.
+    """
+    with (app / "Info.plist").open("rb") as handle:
+        major, minor = plistlib.load(handle)["CFBundleShortVersionString"].split(".")[:2]
+    return f"{major}.{minor}", f"{major}.{int(minor) - 1}" if int(minor) else ""
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--app", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--case", action="append", choices=CASES)
-    parser.add_argument("--version", default="5.2")
-    parser.add_argument("--previous", default="5.1")
+    parser.add_argument("--version", help="Blender version folder, defaults to the app's version")
+    parser.add_argument("--previous", help="Version to upgrade from, defaults to the minor before")
     args = parser.parse_args()
+    global BUNDLE_ID
+    BUNDLE_ID = bundle_identifier(args.app)
+    version, previous = app_versions(args.app)
+    args.version = args.version or version
+    args.previous = args.previous or previous
+    if not args.previous:
+        parser.error("--previous is required for a major version")
 
     args.output.mkdir(parents=True, exist_ok=True)
     runtime = json.loads(run("xcrun", "simctl", "list", "runtimes", "--json").stdout)
