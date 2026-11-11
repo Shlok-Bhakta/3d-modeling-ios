@@ -1069,6 +1069,8 @@ void popup_block_close(bContext *C, wmWindow *win, Block *block);
 
 bool popup_block_name_exists(const bScreen *screen, StringRef name);
 
+bool popup_region_from_operator(const bScreen *screen, const ARegion *region);
+
 /* Blocks
  *
  * Functions for creating, drawing and freeing blocks. A Block is a
@@ -2859,6 +2861,8 @@ void template_light_linking_collection(
 
 void template_bone_collection_tree(Layout *layout, bContext *C);
 void template_grease_pencil_layer_tree(Layout *layout, bContext *C);
+
+void template_project_asset_libraries_tree(Layout *layout, bContext *C);
 
 void template_tree_interface(Layout *layout, const bContext *C, PointerRNA *ptr);
 /**

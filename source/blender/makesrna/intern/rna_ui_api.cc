@@ -1564,8 +1564,12 @@ void RNA_api_ui_layout(StructRNA *srna)
       "",
       "Identifier of the boolean property that determines whether the panel is open or closed");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  parm = RNA_def_pointer(func, "layout_header", "UILayout", "", "Sub-layout to put items in");
-  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, ParameterFlag(0));
+  parm = RNA_def_pointer(
+      func,
+      "layout_header",
+      "UILayout",
+      "",
+      "Sub-layout to put items in. Will be none if the property does not exists.");
   RNA_def_function_output(func, parm);
   parm = RNA_def_pointer(func,
                          "layout_body",
@@ -2748,6 +2752,11 @@ void RNA_api_ui_layout(StructRNA *srna)
 
   func = RNA_def_function(srna, "template_bone_collection_tree", "template_bone_collection_tree");
   RNA_def_function_ui_description(func, "Show bone collections tree");
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT);
+
+  func = RNA_def_function(
+      srna, "template_project_asset_libraries_tree", "template_project_asset_libraries_tree");
+  RNA_def_function_ui_description(func, "Show current project's asset library tree");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
 
   func = RNA_def_function(

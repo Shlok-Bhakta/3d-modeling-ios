@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 5.3.0 Beta (b'f0219159730a')\n"
+"Project-Id-Version: Blender 5.3.0 Release Candidate (b'f78a5e153839')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-26 10:44+0000\n"
+"POT-Creation-Date: 2026-11-09 09:34+0000\n"
 "PO-Revision-Date: 2026-10-23 06:12+0000\n"
 "Last-Translator: 游博凱 <augustus85918@gmail.com>\n"
 "Language-Team: Chinese (Traditional Han script) <https://translate.blender.org/projects/blender-ui/ui/zh_Hant/>\n"
@@ -26356,8 +26356,68 @@ msgid "Material slot name"
 msgstr "材質槽名稱"
 
 
+msgid "Enable Bone Options"
+msgstr "啟用骨骼設定"
+
+
+msgid "Disable Bone Options"
+msgstr "停用骨骼設定"
+
+
+msgid "Mesh Select Mode"
+msgstr "網格選取模式"
+
+
 msgid "Creative"
 msgstr "創意"
+
+
+msgid "Face Data"
+msgstr "面資料"
+
+
+msgid "Set Face Strength"
+msgstr "設定面強度"
+
+
+msgid "Clean Up"
+msgstr "清理"
+
+
+msgid "Merge"
+msgstr "合併"
+
+
+msgid "Show/Hide"
+msgstr "顯示/隱藏"
+
+
+msgid "Special Characters"
+msgstr "特殊字元"
+
+
+msgid "Kerning"
+msgstr "字間微調"
+
+
+msgid "Metaball"
+msgstr "變幻球"
+
+
+msgid "Names"
+msgstr "名稱"
+
+
+msgid "Bone Roll"
+msgstr "骨骼滾動"
+
+
+msgid "Math"
+msgstr "數學公式"
+
+
+msgid "Utilities"
+msgstr "效用"
 
 
 msgid "Pivot Point"
@@ -26388,8 +26448,32 @@ msgid "Vertex Group Locks"
 msgstr "頂點群組鎖定"
 
 
+msgid "Read"
+msgstr "讀取"
+
+
+msgid "Sample"
+msgstr "取樣"
+
+
+msgid "Write"
+msgstr "寫入"
+
+
+msgid "Primitives"
+msgstr "原形"
+
+
+msgid "Gizmo"
+msgstr "操縱器"
+
+
 msgid "Mirror"
 msgstr "鏡像"
+
+
+msgid "Instances"
+msgstr "實例化"
 
 
 msgid "UV Mapping"
@@ -26412,6 +26496,10 @@ msgid "Align View"
 msgstr "對齊檢視"
 
 
+msgid "Import"
+msgstr "匯入"
+
+
 msgid "Align View to Active"
 msgstr "對齊檢視至作用項"
 
@@ -26420,16 +26508,8 @@ msgid "View Regions"
 msgstr "檢視範圍"
 
 
-msgid "Math"
-msgstr "數學公式"
-
-
 msgid "Select More/Less"
 msgstr "選取更多/更少"
-
-
-msgid "Utilities"
-msgstr "效用"
 
 
 msgid "Select Similar"
@@ -26440,6 +26520,10 @@ msgid "Select All by Trait"
 msgstr "依特徵全選"
 
 
+msgid "Deprecated"
+msgstr "已棄用"
+
+
 msgid "Select Linked"
 msgstr "選取連結項"
 
@@ -26448,28 +26532,16 @@ msgid "Select Loops"
 msgstr "選取迴圈"
 
 
-msgid "Read"
-msgstr "讀取"
+msgid "Render Preview"
+msgstr "算繪預覽"
 
 
-msgid "Sample"
-msgstr "取樣"
+msgid "UV"
+msgstr "UV"
 
 
 msgid "Assign Material"
 msgstr "指派材質"
-
-
-msgid "Write"
-msgstr "寫入"
-
-
-msgid "Primitives"
-msgstr "原形"
-
-
-msgid "Metaball"
-msgstr "變幻球"
 
 
 msgid "Light"
@@ -26480,24 +26552,12 @@ msgid "Light Probe"
 msgstr "燈光採樣器"
 
 
-msgid "Gizmo"
-msgstr "操縱器"
-
-
-msgid "Instances"
-msgstr "實例化"
-
-
 msgid "Add Image"
 msgstr "新增影像"
 
 
 msgid "Relations"
 msgstr "關係"
-
-
-msgid "Import"
-msgstr "匯入"
 
 
 msgid "Rigid Body"
@@ -26512,20 +26572,8 @@ msgid "Track"
 msgstr "追蹤"
 
 
-msgid "Deprecated"
-msgstr "已棄用"
-
-
 msgid "Quick Effects"
 msgstr "快速效果"
-
-
-msgid "Show/Hide"
-msgstr "顯示/隱藏"
-
-
-msgid "Clean Up"
-msgstr "清理"
 
 
 msgid "Asset"
@@ -26536,16 +26584,8 @@ msgid "Make Single User"
 msgstr "製作單一使用者"
 
 
-msgid "Render Preview"
-msgstr "算繪預覽"
-
-
 msgid "Convert"
 msgstr "轉換"
-
-
-msgid "UV"
-msgstr "UV"
 
 
 msgid "Link/Transfer Data"
@@ -26554,6 +26594,14 @@ msgstr "連結/傳輸資料"
 
 msgid "Hooks"
 msgstr "鉤"
+
+
+msgid "Linked"
+msgstr "已連結"
+
+
+msgid "Layout"
+msgstr "配置"
 
 
 msgid "Trim/Add"
@@ -26576,6 +26624,10 @@ msgid "Clear Transform"
 msgstr "清除變換"
 
 
+msgid "Adjust"
+msgstr "調整"
+
+
 msgid "In-Betweens"
 msgstr "內部之間"
 
@@ -26588,68 +26640,16 @@ msgid "Bone Collections"
 msgstr "骨骼集盒"
 
 
-msgid "Names"
-msgstr "名稱"
-
-
-msgid "Toggle Bone Options"
-msgstr "開關骨骼選項"
-
-
-msgid "Enable Bone Options"
-msgstr "啟用骨骼設定"
-
-
-msgid "Disable Bone Options"
-msgstr "停用骨骼設定"
-
-
-msgid "Mesh Select Mode"
-msgstr "網格選取模式"
-
-
-msgid "Face Data"
-msgstr "面資料"
-
-
-msgid "Set Face Strength"
-msgstr "設定面強度"
-
-
-msgid "Merge"
-msgstr "合併"
-
-
-msgid "Linked"
-msgstr "已連結"
-
-
-msgid "Layout"
-msgstr "配置"
-
-
-msgid "Special Characters"
-msgstr "特殊字元"
-
-
-msgid "Kerning"
-msgstr "字間微調"
-
-
-msgid "Adjust"
-msgstr "調整"
-
-
-msgid "Bone Roll"
-msgstr "骨骼滾動"
-
-
 msgid "Keying"
 msgstr "鍵處理"
 
 
 msgid "Tracking"
 msgstr "跟蹤"
+
+
+msgid "Toggle Bone Options"
+msgstr "開關骨骼選項"
 
 
 msgid "Keyframe Insert Pie"
@@ -38181,11 +38181,6 @@ msgstr "載入並套用 Blender XML 主題檔案"
 msgctxt "Operator"
 msgid "Install Theme..."
 msgstr "安裝主題..."
-
-
-msgctxt "Operator"
-msgid "Add Asset Library"
-msgstr "加入素材庫"
 
 
 msgid "Add or remove a white balance preset"
@@ -53823,6 +53818,11 @@ msgstr "要刪除的附加元件模組名稱"
 
 msgid "Remove existing template with the same ID"
 msgstr "移除具有相同 ID 的既有範本"
+
+
+msgctxt "Operator"
+msgid "Add Asset Library"
+msgstr "加入素材庫"
 
 
 msgctxt "Operator"
@@ -83214,6 +83214,11 @@ msgid "Disable in Render"
 msgstr "在算繪中停用"
 
 
+msgctxt "Collection"
+msgid "New"
+msgstr "新增"
+
+
 msgctxt "Operator"
 msgid "Instance to Scene"
 msgstr "實例至場景"
@@ -83248,11 +83253,6 @@ msgstr "隱藏一層"
 msgctxt "Operator"
 msgid "Relocate"
 msgstr "重新定位"
-
-
-msgctxt "Collection"
-msgid "New"
-msgstr "新增"
 
 
 msgctxt "Operator"
@@ -88955,6 +88955,10 @@ msgid "Operator cannot redo"
 msgstr "操作器不能重做"
 
 
+msgid "Built-In"
+msgstr "內建"
+
+
 msgid "Size: {}"
 msgstr "大小：{}"
 
@@ -91624,10 +91628,6 @@ msgid "No active item to rename"
 msgstr "沒有作用中項目可重新命名"
 
 
-msgid "No selected data-blocks to copy"
-msgstr "沒有已選資料組塊可複製"
-
-
 msgid "Operation requires an active keying set"
 msgstr "操作需要一個作用中的鍵處理集"
 
@@ -91789,10 +91789,6 @@ msgstr "(空)"
 
 msgid "Strip None"
 msgstr "片段無"
-
-
-msgid "Built-In"
-msgstr "內建"
 
 
 msgid "Add a color strip to the sequencer"

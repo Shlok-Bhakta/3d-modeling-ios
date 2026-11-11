@@ -1405,6 +1405,11 @@ void wm_homefile_read_ex(bContext *C,
     }
   }
 
+  /* Open last project on startup. */
+  if (params_homefile->is_first_time && use_data && wm_init_last_project_on_startup(bmain)) {
+    IMB_colormanagement_project_read_post(bmain);
+  }
+
   if ((app_template != nullptr) && (app_template[0] != '\0')) {
     if (!BKE_appdir_app_template_id_search(
             app_template, app_template_system, sizeof(app_template_system)))
@@ -3481,7 +3486,8 @@ static bool wm_open_mainfile_check(bContext * /*C*/, wmOperator *op)
 
   /* Excluded paths can't be trusted, unless the command line overrides the preference. */
   if (((U.flag & USER_SCRIPT_AUTOEXEC_DISABLE) == 0) && !G.autoexec_override.has_value()) {
-    if (BKE_autoexec_match(filepath, true, true)) {
+    /* The file selector may start without a path, e.g. an unsaved session. */
+    if ((filepath[0] != '\0') && BKE_autoexec_match(filepath, true, true)) {
       RNA_property_boolean_set(op->ptr, prop, false);
       is_untrusted = true;
     }

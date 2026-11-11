@@ -91,7 +91,9 @@ else()
     INSTALL_COMMAND
       ${CMAKE_COMMAND} -E env
         PIP_CONSTRAINT=${PIP_CONSTRAINT_FILE}
+        PIP_BUILD_CONSTRAINT=${PIP_CONSTRAINT_FILE}
         ${PYTHON_BINARY} -m pip install --no-cache-dir ${SITE_PACKAGES_EXTRA}
+        pip==${PYTHON_PIP_VERSION}
         ${_python_site_package_requirements}
         --no-binary :all:
   )
