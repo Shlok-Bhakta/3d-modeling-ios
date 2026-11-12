@@ -4,7 +4,7 @@
 
 /** \file
  * \ingroup GHOST
- * Platform-neutral state for the on-screen Shift, Ctrl and Alt keys.
+ * Platform-neutral state for the on-screen Shift, Ctrl, Alt and Cmd keys.
  */
 
 #pragma once
@@ -15,9 +15,10 @@ enum class GHOST_IOSModifier : uint8_t {
   Shift,
   Control,
   Alt,
+  Command,
 };
 
-constexpr int GHOST_IOS_MODIFIER_COUNT = 3;
+constexpr int GHOST_IOS_MODIFIER_COUNT = 4;
 
 enum class GHOST_IOSModifierMode : uint8_t {
   /** Not applied. */

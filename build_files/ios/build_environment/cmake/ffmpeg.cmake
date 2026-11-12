@@ -35,7 +35,9 @@ if(NOT WITH_APPLE_CROSSPLATFORM)
   string(APPEND FFMPEG_CFLAGS " \
 -I${temp_LIBDIR}/x264/include \
 -I${temp_LIBDIR}/aom/include \
--I${temp_LIBDIR}/x265/include")
+-I${temp_LIBDIR}/x265/include \
+-I${temp_LIBDIR}/vulkan_headers/include \
+-I${temp_LIBDIR}/ffnvcodec/include")
   string(APPEND FFMPEG_LDFLAGS " \
 ${LIBDIR_FLAG}${temp_LIBDIR}/x264/lib \
 ${LIBDIR_FLAG}${temp_LIBDIR}/x265/lib \
@@ -49,6 +51,7 @@ if(WIN32)
 ${FFMPEG_CFLAGS} \
 -I${temp_LIBDIR}/openjpeg_msvc/include/openjpeg-2.5 \
 -I${temp_LIBDIR}/opus/include/opus \
+-I${temp_LIBDIR}/amf/include \
 -DOPJ_STATIC \
 -MD \
 -UHAVE_UNISTD_H"
@@ -92,7 +95,8 @@ ${temp_LIBDIR}/opus/lib/pkgconfig:"
     string(APPEND FFMPEG_ENV "\
 ${temp_LIBDIR}/x264/lib/pkgconfig:\
 ${temp_LIBDIR}/aom/lib/pkgconfig:\
-${temp_LIBDIR}/x265/lib/pkgconfig:")
+${temp_LIBDIR}/x265/lib/pkgconfig:\
+${temp_LIBDIR}/ffnvcodec/lib/pkgconfig:")
   endif()
 endif()
 
@@ -143,13 +147,7 @@ else()
   set(FFMPEG_CONFIGURE_COMMAND ${CONFIGURE_ENV_NO_PERL})
 endif()
 
-if(APPLE AND NOT WITH_APPLE_CROSSPLATFORM)
-  set(FFMPEG_EXTRA_FLAGS
-    ${FFMPEG_EXTRA_FLAGS}
-    --target-os=darwin
-    --x86asmexe=${LIBDIR}/nasm/bin/nasm
-  )
-elseif(UNIX)
+if(UNIX AND NOT WITH_APPLE_CROSSPLATFORM)
   set(FFMPEG_EXTRA_FLAGS
     ${FFMPEG_EXTRA_FLAGS}
     --x86asmexe=${LIBDIR}/nasm/bin/nasm
@@ -170,6 +168,10 @@ if(WITH_APPLE_CROSSPLATFORM)
     "--metallib=xcrun -sdk ${BLENDER_IOS_XCRUN_SDK} metallib"
     --sysroot=${CMAKE_OSX_SYSROOT}
     --disable-programs
+    --disable-vulkan
+    --disable-nvenc
+    --disable-nvdec
+    --disable-amf
   )
   set(FFMPEG_OPTIONAL_CODEC_FLAGS
     --disable-libx264
@@ -180,14 +182,58 @@ if(WITH_APPLE_CROSSPLATFORM)
     --enable-videotoolbox
     --enable-audiotoolbox
   )
-else()
+elseif(APPLE)
+  set(FFMPEG_EXTRA_FLAGS
+    ${FFMPEG_EXTRA_FLAGS}
+    --target-os=darwin
+    --enable-videotoolbox
+    --disable-vulkan
+    --x86asmexe=${LIBDIR}/nasm/bin/nasm
+    --disable-nvenc
+    --disable-nvdec
+    --disable-amf
+  )
+elseif(WIN32)
+  set(FFMPEG_EXTRA_FLAGS
+    ${FFMPEG_EXTRA_FLAGS}
+    --enable-d3d11va
+    --disable-videotoolbox
+    --enable-vulkan
+  )
+  if(BLENDER_PLATFORM_WINDOWS_ARM)
+    set(FFMPEG_EXTRA_FLAGS
+      ${FFMPEG_EXTRA_FLAGS}
+      --disable-nvenc
+      --disable-nvdec
+      --disable-amf
+    )
+  else()
+    set(FFMPEG_EXTRA_FLAGS
+      ${FFMPEG_EXTRA_FLAGS}
+      --enable-nvenc
+      --enable-nvdec
+      --enable-amf
+    )
+  endif()
+elseif(UNIX)
+  set(FFMPEG_EXTRA_FLAGS
+    ${FFMPEG_EXTRA_FLAGS}
+    --x86asmexe=${LIBDIR}/nasm/bin/nasm
+    --disable-videotoolbox
+    --enable-nvdec
+    --enable-nvenc
+    --enable-vulkan
+    --disable-amf
+  )
+endif()
+
+if(NOT WITH_APPLE_CROSSPLATFORM)
   set(FFMPEG_OPTIONAL_CODEC_FLAGS
     --enable-libx264
     --enable-libx265
     --enable-libaom
   )
   set(FFMPEG_APPLE_MEDIA_FLAGS
-    --disable-videotoolbox
     --disable-audiotoolbox
   )
 endif()
@@ -238,11 +284,10 @@ ExternalProject_Add(external_ffmpeg
       --disable-indev=qtkit
       --disable-sdl2
       --disable-gnutls
-      ${FFMPEG_APPLE_MEDIA_FLAGS}
       --disable-libxcb
       --disable-xlib
+      ${FFMPEG_APPLE_MEDIA_FLAGS}
       --disable-cuvid
-      --disable-nvenc
       --disable-indev=jack
       --disable-indev=alsa
       --disable-outdev=alsa
@@ -286,6 +331,7 @@ if(NOT WITH_APPLE_CROSSPLATFORM)
     external_x264
     external_x265
     external_aom
+    external_vulkan_headers
   )
 endif()
 if(WIN32)
@@ -310,6 +356,18 @@ if(UNIX)
   if(NOT WITH_APPLE_CROSSPLATFORM)
     add_dependencies(external_ffmpeg external_nasm)
   endif()
+endif()
+if(NOT APPLE AND NOT BLENDER_PLATFORM_WINDOWS_ARM)
+  add_dependencies(
+    external_ffmpeg
+    external_ffnvcodec
+  )
+endif()
+if(WIN32 AND NOT BLENDER_PLATFORM_WINDOWS_ARM)
+  add_dependencies(
+    external_ffmpeg
+    external_amf
+  )
 endif()
 
 if(WIN32)

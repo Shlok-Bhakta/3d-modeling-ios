@@ -101,7 +101,7 @@ class BeltHarnessTests(unittest.TestCase):
     def test_touch_segments_release_every_contact_and_stay_on_screen(self) -> None:
         centers = {identifier: (0.9, 0.9) for identifier in belt.BELT_IDS}
         segments = belt.touch_segments(centers)
-        self.assertEqual(len(segments), 8)
+        self.assertEqual(len(segments), 10)
         for segment in segments:
             down = 0
             for event in segment:

@@ -30,6 +30,9 @@ if(WITH_APPLE_CROSSPLATFORM)
   set(USD_PLATFORM_FLAGS
     -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER
     -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY
+    # USD 26.08 defaults to a shared OpenUSD.framework on Apple embedded platforms,
+    # which overrides BUILD_SHARED_LIBS. Blender links USD statically into the app.
+    -DPXR_BUILD_APPLE_FRAMEWORK=OFF
   )
 elseif(WIN32)
   # OIIO and OSL are statically linked for us, but USD doesn't know
@@ -191,15 +194,6 @@ ExternalProject_Add(external_usd
       ${BUILD_DIR}/usd/src/external_usd <
       ${PATCH_DIR}/usd_vulkan_headless_3931.diff &&
     ${PATCH_CMD} -p 1 -d
-      ${BUILD_DIR}/usd/src/external_usd
-     -i ${PATCH_DIR}/usd_f595276c1ac231bb0bc632697f398a681a963e3f.diff &&
-    ${PATCH_CMD} -p 1 -d
-      ${BUILD_DIR}/usd/src/external_usd
-     -i ${PATCH_DIR}/usd_a609a89a750f1c70f5bfd61bb418d5a09eaa6585.diff &&
-    ${PATCH_CMD} -p 1 -d
-      ${BUILD_DIR}/usd/src/external_usd
-     -i ${PATCH_DIR}/usd_5744a98789c934e8810058b0f21d22f344df28b0.diff &&
-    ${PATCH_CMD} -p 1 -d
       ${BUILD_DIR}/usd/src/external_usd <
       ${IOS_PATCH_DIR}/usd_no_storm_without_gl.diff
 
@@ -258,8 +252,8 @@ if(WIN32)
   if(BUILD_MODE STREQUAL Debug)
     ExternalProject_Add_Step(external_usd after_install
       COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${LIBDIR}/usd/lib/python
-        ${HARVEST_TARGET}/usd/lib/debug/python
+        ${LIBDIR}/usd/lib/site-packages
+        ${HARVEST_TARGET}/usd/lib/debug/site-packages
       COMMAND ${CMAKE_COMMAND} -E copy
         ${LIBDIR}/usd/lib/usd_ms_d.dll
         ${HARVEST_TARGET}/usd/lib/usd_ms_d.dll
@@ -276,7 +270,7 @@ else()
   harvest(external_usd usd/lib/usd usd/lib/usd "*")
   harvest_rpath_python(
     external_usd
-    usd/lib/python/pxr
+    usd/lib/python${PYTHON_SHORT_VERSION}/site-packages/pxr
     python/lib/python${PYTHON_SHORT_VERSION}/site-packages/pxr
     "*"
   )

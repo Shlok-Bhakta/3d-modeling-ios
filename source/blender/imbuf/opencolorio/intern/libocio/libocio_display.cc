@@ -134,8 +134,8 @@ LibOCIODisplay::LibOCIODisplay(const int index, const LibOCIOConfig &config) : c
         (ocio_display_colorspace) ? static_cast<const LibOCIOColorSpace *>(config.get_color_space(
                                         ocio_display_colorspace->getName())) :
                                     nullptr;
-    StringRefNull display_interop_id = (display_colorspace) ? display_colorspace->interop_id() :
-                                                              "";
+    const StringRef display_interop_id = interop_id_drop_namespace(
+        (display_colorspace) ? display_colorspace->interop_id() : "");
 
     if (!display_interop_id.is_empty()) {
       if (display_interop_id.endswith("_rec709_display") ||
@@ -197,7 +197,7 @@ LibOCIODisplay::LibOCIODisplay(const int index, const LibOCIOConfig &config) : c
                      display_colorspace);
   }
 
-  /* Detect untonemppaed view transform. */
+  /* Detect untonemapped view transform. */
   if (untonemapped_view_ == nullptr) {
     /* Use Blender config and ACES config naming conventions. */
     for (const LibOCIOView &view : views_) {

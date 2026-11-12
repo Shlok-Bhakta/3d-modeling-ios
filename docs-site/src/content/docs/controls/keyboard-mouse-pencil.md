@@ -19,6 +19,10 @@ Use your usual Blender shortcuts: `G` to move, `R` to rotate, `S` to scale,
 `Tab` to change modes, and `F3` to search. Number-row keys, arrows, modifiers,
 function keys, and numpad keys are supported when your keyboard has them.
 
+Shortcuts work as they do in Blender on a Mac. Command works in place of Ctrl,
+such as `Command-S` to save or `Command-Z` to undo, and Ctrl still works too.
+Keymaps and settings copied from a Mac keep their Command shortcuts.
+
 Press `Command-W` to close a secondary window, such as a file browser or
 render view. You can also use the close button at the top right.
 
@@ -49,6 +53,6 @@ You can use finger gestures to navigate while working with Pencil.
 
 Hold an on-screen modifier key with a finger while you draw with Pencil. For
 example, hold **Shift** to smooth while sculpting, or **Ctrl** to invert a
-brush. See [Shift, Ctrl, and Alt](/3d-modeling-thingy-ios/controls/touch/#shift-ctrl-and-alt).
+brush. See [Shift, Ctrl, Alt, and Cmd](/3d-modeling-thingy-ios/controls/touch/#shift-ctrl-alt-and-cmd).
 The on-screen keys hide while a hardware keyboard is connected; use its own
 modifier keys instead.

@@ -32,7 +32,7 @@ class PackageGltfBridgesTests(unittest.TestCase):
 
             relocated = package_bridges(bundle, addon)
 
-            self.assertEqual(len(relocated), 2)
+            self.assertEqual(len(relocated), len(BRIDGE_NAMES))
             for index, name in enumerate(BRIDGE_NAMES):
                 destination = bundle / "Frameworks" / name
                 self.assertFalse((addon / name).exists())

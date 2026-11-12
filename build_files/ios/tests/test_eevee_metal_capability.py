@@ -32,7 +32,16 @@ class EeveeMetalCapabilityTests(unittest.TestCase):
         shader = SHADER_SOURCE.read_text()
 
         guard = "#if defined(GPU_METAL) && defined(MTL_SUPPORTS_SIMDGROUP_REDUCTION)"
-        self.assertEqual(light_iter.count(guard), 2)
+        reductions = 0
+        enclosing_condition = None
+        for line in light_iter.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("#if"):
+                enclosing_condition = stripped
+            elif "simd_" in stripped:
+                reductions += 1
+                self.assertEqual(enclosing_condition, guard, stripped)
+        self.assertGreaterEqual(reductions, 4)
         self.assertIn("bool supports_simdgroup_reduction = false;", capability)
         self.assertIn("capabilities.supports_simdgroup_reduction =", backend)
         self.assertIn("capabilities().supports_simdgroup_reduction", shader)

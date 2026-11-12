@@ -13,9 +13,9 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "BLI_fileops.h"
+#include "BLI_fileops.hh"
 #include "BLI_path_utils.hh"
-#include "BLI_string.h"
+#include "BLI_string.hh"
 
 #include "BLT_translation.hh"
 #include "UI_resources.hh"

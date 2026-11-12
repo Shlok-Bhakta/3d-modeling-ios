@@ -15,6 +15,7 @@ from typing import Sequence
 
 BRIDGE_NAMES = (
     "libbf_intern_draco_bridge.dylib",
+    "libbf_intern_ktx_bridge.dylib",
     "libbf_intern_meshopt_bridge.dylib",
 )
 

@@ -32,12 +32,12 @@ DRIVER = textwrap.dedent(
     int main(int argc, char **argv)
     {
       @autoreleasepool {
-        if (argc != 3) {
+        if (argc != 4) {
           return 2;
         }
         NSURL *documents = [NSURL fileURLWithPath:@(argv[1]) isDirectory:YES];
         NSURL *legacy = [NSURL fileURLWithPath:@(argv[2]) isDirectory:YES];
-        NSURL *root = GHOST_IOSSettings_prepareRoot(documents, legacy);
+        NSURL *root = GHOST_IOSSettings_prepareRoot(documents, legacy, @(argv[3]));
         if (root == nil) {
           return 3;
         }
@@ -74,12 +74,27 @@ class GhostSettingsLocationTests(unittest.TestCase):
     def tearDownClass(cls) -> None:
         cls.build_directory.cleanup()
 
-    def prepare(self, documents: Path, legacy: Path) -> Path:
+    def prepare(self, documents: Path, legacy: Path, version: str = "5.3") -> Path:
         result = subprocess.run(
-            [str(self.executable), str(documents), str(legacy)], capture_output=True, text=True
+            [str(self.executable), str(documents), str(legacy), version],
+            capture_output=True, text=True
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         return Path(result.stdout.strip())
+
+    def test_readme_follows_the_app_version_after_an_update(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            documents = Path(directory) / "Documents"
+            legacy = Path(directory) / "Library" / "Application Support" / "Blender"
+            documents.mkdir()
+            self.prepare(documents, legacy, "5.2")
+            readme = documents / "Settings" / "README.txt"
+            self.assertIn("  5.2/config ", readme.read_text())
+
+            self.prepare(documents, legacy, "5.3")
+
+            self.assertIn("  5.3/config ", readme.read_text())
+            self.assertNotIn("5.2", readme.read_text())
 
     def test_fresh_install_uses_a_visible_settings_folder_with_a_readme(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -92,7 +107,8 @@ class GhostSettingsLocationTests(unittest.TestCase):
             self.assertEqual(root, documents / "Settings")
             self.assertTrue(root.is_dir())
             readme = (root / "README.txt").read_text()
-            self.assertIn("5.2", readme)
+            self.assertIn("  5.3/config ", readme)
+            self.assertNotIn("5.2", readme)
             self.assertIn("Load", readme)
             self.assertIn("Resolution Scale", readme)
             self.assertFalse(legacy.exists())
@@ -164,7 +180,7 @@ class GhostSettingsPathsWiringTests(unittest.TestCase):
         source = PATHS_SOURCE.read_text()
         user_dir = source[source.index("GHOST_SystemPathsCocoa::getUserDir") :]
         user_dir = user_dir[: user_dir.index("\n}\n")]
-        self.assertIn("IOS_user_settings_root()", user_dir)
+        self.assertIn("IOS_user_settings_root(versionstr)", user_dir)
         self.assertIn("GHOST_IOSSettings_prepareRoot", source)
         self.assertIn("dispatch_once", source)
         self.assertIn("NSDocumentDirectory", source)

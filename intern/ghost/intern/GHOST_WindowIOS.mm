@@ -373,6 +373,8 @@ typedef struct UserInputEvent {
   UITextField *text_field;
   NSString *original_text;
   bool onscreen_keyboard_active;
+  /* Hardware keys edit Blender's string directly, leaving the native field's copy out of date. */
+  bool text_field_stale;
   std::string text_field_string;
 
   /* Toolbar */
@@ -390,7 +392,7 @@ typedef struct UserInputEvent {
   UIButton *close_window_button;
   NSObject *file_access_controls;
 
-  /* On-screen Shift, Ctrl and Alt. */
+  /* On-screen Shift, Ctrl, Alt and Cmd. */
   NSObject *modifier_belt;
   GHOST_IOSModifierLatch *modifier_latch;
 }
@@ -617,6 +619,7 @@ static bool modifierForKey(const GHOST_TKey key, GHOST_TModifierKey &modifier)
   text_field = nil;
   original_text = nil;
   onscreen_keyboard_active = false;
+  text_field_stale = false;
   text_field_string.clear();
   current_pencil_touch = nil;
   tablet_data = GHOST_TABLET_DATA_NONE;
@@ -815,6 +818,8 @@ static GHOST_TModifierKey IOS_belt_modifier_key(const GHOST_IOSModifier modifier
       return GHOST_kModifierKeyLeftControl;
     case GHOST_IOSModifier::Alt:
       return GHOST_kModifierKeyLeftAlt;
+    case GHOST_IOSModifier::Command:
+      return GHOST_kModifierKeyLeftOS;
   }
   return GHOST_kModifierKeyLeftShift;
 }
@@ -985,6 +990,9 @@ static GHOST_TModifierKey IOS_belt_modifier_key(const GHOST_IOSModifier modifier
 
     const GHOST_TKey key = convertKeyboardHIDUsage(ui_key.keyCode);
     const bool is_down = event_type == GHOST_kEventKeyDown;
+    if (is_down && onscreen_keyboard_active) {
+      text_field_stale = true;
+    }
     char utf8[6] = {};
     if (is_down && ui_key.characters.length != 0) {
       NSData *encoded = [ui_key.characters dataUsingEncoding:NSUTF8StringEncoding];
@@ -2168,6 +2176,7 @@ static GHOST_TModifierKey IOS_belt_modifier_key(const GHOST_IOSModifier modifier
   /* Keep the cancel value alive for the full edit session. */
   [original_text release];
   original_text = [text_field.text copy];
+  text_field_stale = false;
   toolbar_value_label.text = text_field.text;
   toolbar_value_label.accessibilityValue = text_field.text;
 
@@ -2310,6 +2319,10 @@ static GHOST_TModifierKey IOS_belt_modifier_key(const GHOST_IOSModifier modifier
 {
   /* Lock access around keyboard handling events */
   @synchronized(self) {
+    /* Blender already has the hardware edits; the native copy would undo them (#69). */
+    if (text_field_stale) {
+      return nullptr;
+    }
 
     /* UIKit normalizes a cleared text property to an empty string. Once the keyboard is hidden,
      * keep the value captured by hideOnscreenKeyboard instead of replacing it with that empty

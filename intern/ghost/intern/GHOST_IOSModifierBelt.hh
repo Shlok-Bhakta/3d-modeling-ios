@@ -4,7 +4,7 @@
 
 /** \file
  * \ingroup GHOST
- * Native on-screen Shift, Ctrl and Alt keys for touch and Apple Pencil.
+ * Native on-screen Shift, Ctrl, Alt and Cmd keys for touch and Apple Pencil.
  */
 
 #pragma once

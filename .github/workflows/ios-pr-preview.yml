@@ -188,7 +188,7 @@ jobs:
             -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY \
             -DBLENDER_IOS_BUILD_PYTHON="$build_python" \
             -DPACKAGE_USE_UPSTREAM_SOURCES=OFF \
-            "-DBLENDER_DEPENDENCY_DOWNLOADS=ZLIB;PNG;JPEG;OPENEXR;OPENSUBDIV;FREETYPE;OPENCOLORIO;MINIZIPNG;OPENIMAGEIO;TIFF;PYTHON;TBB;ZSTANDARD;NUMPY;OPENJPEG;WEBP;YAMLCPP;EXPAT;PUGIXML;BZIP2;FFI;LZMA;SSL;SQLITE;ZSTD;BROTLI;FMT;ROBINMAP;IMATH;PYSTRING;DEFLATE;OPENJPH;EIGEN;OPENAL;BLOSC;ALEMBIC;OIDN;OPENVDB;FFTW;SNDFILE;FLAC;OGG;VORBIS;THEORA;VPX;OPUS;LAME;FFMPEG;GMP;HARU;MANIFOLD;RUBBERBAND;MATERIALX;ABSEIL;CERES;DRACO;MESHOPTIMIZER;POTRACE;EMBREE;OPENPGL;USD" \
+            "-DBLENDER_DEPENDENCY_DOWNLOADS=ZLIB;PNG;JPEG;OPENEXR;OPENSUBDIV;FREETYPE;OPENCOLORIO;MINIZIPNG;OPENIMAGEIO;TIFF;PYTHON;TBB;ZSTANDARD;NUMPY;OPENJPEG;WEBP;YAMLCPP;EXPAT;PUGIXML;BZIP2;FFI;LZMA;SSL;SQLITE;ZSTD;BROTLI;FMT;ROBINMAP;IMATH;PYSTRING;DEFLATE;OPENJPH;EIGEN;OPENAL;BLOSC;ALEMBIC;OIDN;OPENVDB;FFTW;SNDFILE;FLAC;OGG;VORBIS;THEORA;VPX;OPUS;LAME;FFMPEG;GMP;HARU;MANIFOLD;RUBBERBAND;MATERIALX;ABSEIL;CERES;DRACO;MESHOPTIMIZER;POTRACE;EMBREE;OPENPGL;USD;KTX;OPENTIMELINEIO;RAPIDJSON" \
             -DDOWNLOAD_DIR="$DEPS_DOWNLOADS" \
             -DPACKAGE_DIR="$DEPS_PACKAGES" \
             -DHARVEST_TARGET="$DEPS_INSTALL" \
@@ -204,6 +204,7 @@ jobs:
             external_freetype \
             external_gmp \
             external_haru \
+            external_ktx \
             external_manifold \
             external_materialx \
             external_meshoptimizer \
@@ -212,6 +213,7 @@ jobs:
             external_openimagedenoise \
             external_openimageio \
             external_opensubdiv \
+            external_opentimelineio \
             external_openpgl \
             external_openvdb \
             external_potrace \
@@ -263,6 +265,8 @@ jobs:
           FMT_INCLUDE_DIR: ${{ env.DEPS_INSTALL }}/fmt/include
         run: |
           python3 -m unittest \
+            build_files/ios/tests/test_command_keymaps.py \
+            build_files/ios/tests/test_ghost_modifier_belt.py \
             build_files/ios/tests/test_ghost_file_access.py \
             build_files/ios/tests/test_simulator_file_access.py \
             build_files/ios/tests/test_file_access_runtime.py \
@@ -270,6 +274,7 @@ jobs:
             build_files/ios/tests/test_ghost_virtual_pointer.py \
             build_files/ios/tests/test_simulator_hardware_input.py \
             build_files/ios/tests/test_extension_commands_without_processes.py \
+            build_files/ios/tests/test_simulator_compute_failure.py \
             build_files/ios/tests/test_pr_preview_workflow.py
 
       - name: Build revision-matched native tools on cache miss

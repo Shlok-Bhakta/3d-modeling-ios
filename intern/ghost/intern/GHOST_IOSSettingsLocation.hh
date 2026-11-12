@@ -11,6 +11,7 @@
 
 #ifdef __OBJC__
 
+@class NSString;
 @class NSURL;
 
 /**
@@ -18,8 +19,11 @@
  *
  * When only the old hidden `Application Support/Blender` folder exists it is moved there once.
  * If that move fails, the old folder is returned so existing settings stay in use. The returned
- * folder also gets a README explaining how to bring settings from a computer.
+ * folder also gets a README explaining how to bring settings from a computer, which names
+ * `version`, the running Blender version such as 5.3.
  */
-NSURL *GHOST_IOSSettings_prepareRoot(NSURL *documents_url, NSURL *legacy_root_url);
+NSURL *GHOST_IOSSettings_prepareRoot(NSURL *documents_url,
+                                     NSURL *legacy_root_url,
+                                     NSString *version);
 
 #endif

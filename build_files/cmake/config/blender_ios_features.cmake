@@ -40,3 +40,6 @@ set(WITH_INSTALL_PORTABLE    ON  CACHE BOOL "" FORCE)
 # OSL depends on an LLVM/JIT runtime that cannot execute under iOS platform
 # policy. Cycles CPU, Metal, Embree, path guiding, and denoising remain enabled.
 set(WITH_CYCLES_OSL          OFF CACHE BOOL "" FORCE)
+
+# Blender 5.3 bundles Jolt, but nothing uses it yet, so it is not cross-built for iOS.
+set(WITH_JOLT                OFF CACHE BOOL "" FORCE)

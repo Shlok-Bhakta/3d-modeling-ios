@@ -4,7 +4,7 @@
 
 /** \file
  * \ingroup GHOST
- * Native on-screen Shift, Ctrl and Alt keys for touch and Apple Pencil.
+ * Native on-screen Shift, Ctrl, Alt and Cmd keys for touch and Apple Pencil.
  *
  * The belt is a small handle that can be dragged to any corner of the screen. Tapping it shows
  * the keys. Each key can be held like a hardware key, tapped to apply to the next click, or double
@@ -51,6 +51,7 @@ static const GHOST_IOSModifierKeyInfo GHOST_IOS_MODIFIER_KEYS[GHOST_IOS_MODIFIER
     {GHOST_IOSModifier::Shift, @"shift", @"Shift", @"blender_modifier_shift"},
     {GHOST_IOSModifier::Control, @"control", @"Ctrl", @"blender_modifier_control"},
     {GHOST_IOSModifier::Alt, @"option", @"Alt", @"blender_modifier_alt"},
+    {GHOST_IOSModifier::Command, @"command", @"Cmd", @"blender_modifier_command"},
 };
 
 static os_log_t GHOST_IOSModifierBeltLog()
@@ -321,7 +322,7 @@ static UIImage *GHOST_IOSModifierSymbol(NSString *name, const CGFloat size)
   handle_.isAccessibilityElement = YES;
   handle_.accessibilityTraits = UIAccessibilityTraitButton;
   handle_.accessibilityLabel = @"Modifier keys";
-  handle_.accessibilityHint = @"Tap to show Shift, Ctrl and Alt. Drag to move to another corner.";
+  handle_.accessibilityHint = @"Tap to show Shift, Ctrl, Alt and Cmd. Drag to move to another corner.";
   handle_.accessibilityIdentifier = @"blender_modifier_belt_handle";
   handle_icon_ = [[UIImageView alloc] init];
   handle_icon_.translatesAutoresizingMaskIntoConstraints = NO;

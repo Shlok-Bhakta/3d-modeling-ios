@@ -46,3 +46,20 @@ index 0a917ec..010f9ef 100644
      return()
  endif()
  
+diff --git a/pxr/imaging/hgiInterop/CMakeLists.txt b/pxr/imaging/hgiInterop/CMakeLists.txt
+index 6264cce..b5d6d89 100644
+--- a/pxr/imaging/hgiInterop/CMakeLists.txt
++++ b/pxr/imaging/hgiInterop/CMakeLists.txt
+@@ -11,10 +11,9 @@ set(optionalLibraries "")
+ set(optionalCppFiles "")
+ set(optionalPrivateHeaders "")
+ 
+-# Destination of hgiInterop is always OpenGL, so always include garch
+-list(APPEND optionalLibraries garch)
+-
+ if (PXR_ENABLE_GL_SUPPORT)
++    # The OpenGL interop destination needs garch, which only exists with GL support.
++    list(APPEND optionalLibraries garch)
+     list(APPEND optionalCppFiles opengl.cpp)
+     list(APPEND optionalPrivateHeaders opengl.h)
+ endif()

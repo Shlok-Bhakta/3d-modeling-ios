@@ -1,0 +1,78 @@
+# SPDX-FileCopyrightText: 2026 Blender Authors
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+set(OPENTIMELINEIO_EXTRA_ARGS
+    -DKTX_FEATURE_TOOLS=OFF
+    -DKTX_FEATURE_TESTS=OFF
+    # Disable code with problematic license
+    -DKTX_FEATURE_ETC_UNPACK=OFF
+    # disable AVX2 on atscenc
+    -DASTCENC_ISA_AVX2=OFF
+    -DASTCENC_ISA_SSE41=ON
+    -DASTCENC_ISA_SSE2=OFF
+    -Dzstd_ROOT=${LIBDIR}/zstd
+)
+
+if(WITH_APPLE_CROSSPLATFORM)
+  # iOS links KTX statically into the glTF bridge dylib, so the bridge is self-contained.
+  list(APPEND OPENTIMELINEIO_EXTRA_ARGS
+    -DBUILD_SHARED_LIBS=OFF
+    # Cross builds only search the SDK for `zstd_ROOT`, point at the config file directly.
+    -Dzstd_DIR=${LIBDIR}/zstd/lib/cmake/zstd
+  )
+  # KTX turns every iOS library into a framework. Keep the static library and its headers
+  # in the plain `lib` and `include` layout that its exported CMake target describes, and
+  # merge astc-encoder with Apple's libtool even when GNU libtool comes first in `PATH`.
+  set(KTX_IOS_PATCH_COMMAND &&
+    ${PATCH_CMD} -p 1 -d ${BUILD_DIR}/ktx/src/external_ktx
+      -i ${IOS_PATCH_DIR}/ktx_ios_static.diff
+  )
+endif()
+
+
+ExternalProject_Add(external_ktx
+  URL file://${PACKAGE_DIR}/${KTX_FILE}
+  DOWNLOAD_DIR ${DOWNLOAD_DIR}
+  URL_HASH ${KTX_HASH_TYPE}=${KTX_HASH}
+  CMAKE_GENERATOR ${PLATFORM_ALT_GENERATOR}
+  PREFIX ${BUILD_DIR}/ktx
+
+  PATCH_COMMAND
+    # This unbundles whatever zstd they got squirreled away in their extern
+    # folder and uses our copy.
+    ${PATCH_CMD} -p 1 -d ${BUILD_DIR}/ktx/src/external_ktx
+      -i ${PATCH_DIR}/ktx_zstd_dep_fix.diff &&
+    ${PATCH_CMD} -p 1 -d ${BUILD_DIR}/ktx/src/external_ktx
+      -i ${PATCH_DIR}/ktx_asan.diff
+    ${KTX_IOS_PATCH_COMMAND}
+
+  CMAKE_ARGS
+    -DCMAKE_INSTALL_PREFIX=${LIBDIR}/ktx
+    ${DEFAULT_CMAKE_FLAGS} ${OPENTIMELINEIO_EXTRA_ARGS}
+
+  INSTALL_DIR ${LIBDIR}/ktx
+)
+
+add_dependencies(
+  external_ktx
+  external_zstd
+)
+
+if(WIN32)
+  ExternalProject_Add_Step(external_ktx after_install
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+      ${LIBDIR}/ktx/
+      ${HARVEST_TARGET}/ktx
+
+    DEPENDEES install
+  )
+else()
+  harvest(external_ktx ktx/include ktx/include "*.h")
+  # CMake files first because harvest_rpath_lib edits them.
+  harvest(external_ktx ktx/lib/cmake/ktx ktx/lib/cmake/ktx "*.cmake")
+  harvest_rpath_lib(external_ktx ktx/lib ktx/lib "*${SHAREDLIBEXT}*")
+  if(WITH_APPLE_CROSSPLATFORM)
+    harvest(external_ktx ktx/lib ktx/lib "*.a")
+  endif()
+endif()

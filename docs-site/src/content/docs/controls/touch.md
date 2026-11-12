@@ -31,9 +31,10 @@ during a long drag or transform without running out of screen.
 Some tools hide the cursor while you're using them. It comes back when
 you finish the operation.
 
-## Shift, Ctrl, and Alt
+## Shift, Ctrl, Alt, and Cmd
 
-The keyboard button in a corner of the screen opens Shift, Ctrl, and Alt keys.
+The keyboard button in a corner of the screen opens Shift, Ctrl, Alt, and Cmd
+keys.
 Tap it again to tuck the keys away.
 
 | Key action | What it does |
@@ -45,6 +46,9 @@ Tap it again to tuck the keys away.
 To select several objects, faces, or Outliner items, tap **Shift**, then click
 the next item. Double tap **Shift** to keep adding items. In the Outliner,
 **Ctrl** adds items and **Shift** selects a range.
+
+**Cmd** is for shortcuts you've set up with Command, such as keymaps brought
+over from a Mac. Blender's own Command shortcuts also work with **Ctrl**.
 
 Tapped and locked keys only apply to clicks and drags. Two-finger orbit and
 other navigation gestures keep working normally between clicks.

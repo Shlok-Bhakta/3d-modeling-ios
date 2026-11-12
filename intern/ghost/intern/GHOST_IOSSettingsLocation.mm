@@ -15,16 +15,17 @@
 static NSString *const IOS_settings_folder_name = @"Settings";
 static NSString *const IOS_settings_readme_name = @"README.txt";
 
-static NSString *const IOS_settings_readme =
+/* `{VERSION}` is replaced with the running Blender version, such as 5.3. */
+static NSString *const IOS_settings_readme_template =
     @"3D Modeling Thingy settings\n"
      "\n"
      "This folder holds the app's Blender preferences, add-ons and other user files, with one\n"
-     "folder for each Blender version, such as 5.2:\n"
+     "folder for each Blender version, such as {VERSION}:\n"
      "\n"
-     "  5.2/config       Preferences (userpref.blend), the startup file, bookmarks and recent files\n"
-     "  5.2/scripts      Add-ons, presets and startup scripts\n"
-     "  5.2/extensions   Extensions\n"
-     "  5.2/datafiles    Extra data files such as fonts\n"
+     "  {VERSION}/config       Preferences (userpref.blend), the startup file, bookmarks and recent files\n"
+     "  {VERSION}/scripts      Add-ons, presets and startup scripts\n"
+     "  {VERSION}/extensions   Extensions\n"
+     "  {VERSION}/datafiles    Extra data files such as fonts\n"
      "\n"
      "Bring settings from Blender on a computer\n"
      "\n"
@@ -58,15 +59,22 @@ static bool IOS_is_directory(NSFileManager *file_manager, NSURL *url)
   return [file_manager fileExistsAtPath:url.path isDirectory:&is_directory] && is_directory;
 }
 
-static void IOS_write_readme(NSFileManager *file_manager, NSURL *root_url)
+/** The README belongs to the app, so rewrite it when an update changes its text. */
+static void IOS_write_readme(NSURL *root_url, NSString *version)
 {
   NSURL *readme_url = [root_url URLByAppendingPathComponent:IOS_settings_readme_name
                                                 isDirectory:NO];
-  if ([file_manager fileExistsAtPath:readme_url.path]) {
+  NSString *readme = [IOS_settings_readme_template
+      stringByReplacingOccurrencesOfString:@"{VERSION}"
+                                withString:(version.length ? version : @"<version>")];
+  NSString *existing = [NSString stringWithContentsOfURL:readme_url
+                                                encoding:NSUTF8StringEncoding
+                                                   error:nil];
+  if ([existing isEqualToString:readme]) {
     return;
   }
   NSError *error = nil;
-  if (![IOS_settings_readme writeToURL:readme_url
+  if (![readme writeToURL:readme_url
                             atomically:YES
                               encoding:NSUTF8StringEncoding
                                  error:&error])
@@ -77,7 +85,9 @@ static void IOS_write_readme(NSFileManager *file_manager, NSURL *root_url)
   }
 }
 
-NSURL *GHOST_IOSSettings_prepareRoot(NSURL *documents_url, NSURL *legacy_root_url)
+NSURL *GHOST_IOSSettings_prepareRoot(NSURL *documents_url,
+                                     NSURL *legacy_root_url,
+                                     NSString *version)
 {
   if (documents_url == nil) {
     return legacy_root_url;
@@ -113,6 +123,6 @@ NSURL *GHOST_IOSSettings_prepareRoot(NSURL *documents_url, NSURL *legacy_root_ur
     return IOS_is_directory(file_manager, legacy_root_url) ? legacy_root_url : settings_url;
   }
 
-  IOS_write_readme(file_manager, settings_url);
+  IOS_write_readme(settings_url, version);
   return settings_url;
 }

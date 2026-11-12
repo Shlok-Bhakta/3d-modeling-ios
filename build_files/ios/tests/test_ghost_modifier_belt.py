@@ -111,6 +111,29 @@ class GhostModifierLatchTests(unittest.TestCase):
             """,
         )
 
+    def test_command_latches_alongside_control(self) -> None:
+        run_latch_harness(
+            self,
+            """
+            GHOST_IOSModifierLatch latch;
+            GHOST_IOSModifierChange changes[GHOST_IOS_MODIFIER_COUNT];
+            latch.keyDown(Mod::Control, 1.00);
+            latch.keyUp(Mod::Control, 1.05);
+            latch.keyDown(Mod::Command, 1.50);
+            latch.keyUp(Mod::Command, 1.55);
+            CHECK(latch.mode(Mod::Command) == Mode::Latched);
+            CHECK(!latch.wantsDown(Mod::Command));
+
+            latch.pointerPressed();
+            CHECK(latch.takeChanges(changes) == 2);
+            CHECK(changes[0].modifier == Mod::Control && changes[0].down);
+            CHECK(changes[1].modifier == Mod::Command && changes[1].down);
+            latch.pointerReleased();
+            CHECK(latch.takeChanges(changes) == 2);
+            CHECK(latch.mode(Mod::Command) == Mode::Off);
+            """,
+        )
+
     def test_slow_second_tap_clears_the_latch_instead_of_locking(self) -> None:
         run_latch_harness(
             self,
@@ -300,9 +323,18 @@ class GhostModifierBeltIntegrationTests(unittest.TestCase):
             "blender_modifier_shift",
             "blender_modifier_control",
             "blender_modifier_alt",
+            "blender_modifier_command",
         ):
             self.assertIn(identifier, source)
         self.assertIn("accessibilityValue", source)
+
+    def test_command_key_sends_blenders_os_key(self) -> None:
+        source = WINDOW_SOURCE.read_text()
+        mapping = source[source.index("static GHOST_TModifierKey IOS_belt_modifier_key(") :]
+        mapping = mapping[: mapping.index("\n}\n")]
+        self.assertIn("case GHOST_IOSModifier::Command:\n      return GHOST_kModifierKeyLeftOS;",
+                      mapping)
+        self.assertIn('@"command", @"Cmd", @"blender_modifier_command"', BELT_SOURCE.read_text())
 
     def test_belt_moves_and_snaps_to_corners_and_remembers_the_corner(self) -> None:
         source = BELT_SOURCE.read_text()

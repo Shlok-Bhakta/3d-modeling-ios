@@ -16,9 +16,9 @@
 
 #include "BLF_api.hh"
 
-#include "BLI_listbase.h"
-#include "BLI_string.h"
-#include "BLI_string_utf8.h"
+#include "BLI_listbase.hh"
+#include "BLI_string.hh"
+#include "BLI_string_utf8.hh"
 
 #include "BKE_curve.hh"
 #include "BKE_vfont.hh"
@@ -51,11 +51,11 @@ VFontData *BKE_vfontdata_from_freetypefont(PackedFile *pf)
 
   /* Get the font name. */
   char *name = BLF_display_name_from_id(fontid);
-  STRNCPY(vfd->name, name);
+  const size_t name_len = STRNCPY_RLEN(vfd->name, name);
   /* BLF_display_name result must be freed. */
   MEM_delete(name);
 
-  BLI_str_utf8_invalid_strip(vfd->name, ARRAY_SIZE(vfd->name));
+  BLI_str_utf8_invalid_strip(vfd->name, name_len);
 
   if (!BLF_get_vfont_metrics(
           fontid, &vfd->metrics.ascend_ratio, &vfd->metrics.em_ratio, &vfd->metrics.scale))

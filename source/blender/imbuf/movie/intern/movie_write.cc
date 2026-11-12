@@ -26,15 +26,16 @@
 
 #  include "MEM_guardedalloc.h"
 
-#  include "BLI_fileops.h"
-#  include "BLI_math_base.h"
+#  include "BLI_fileops.hh"
 #  include "BLI_math_base.hh"
-#  include "BLI_math_color.h"
+#  include "BLI_math_base_c.hh"
+#  include "BLI_math_color_c.hh"
 #  include "BLI_path_utils.hh"
-#  include "BLI_string.h"
-#  include "BLI_string_utf8.h"
-#  include "BLI_utildefines.h"
+#  include "BLI_string.hh"
+#  include "BLI_string_utf8.hh"
+#  include "BLI_utildefines.hh"
 
+#  include "BKE_blender_project.hh"
 #  include "BKE_image.hh"
 #  include "BKE_main.hh"
 #  include "BKE_path_templates.hh"
@@ -68,6 +69,7 @@ static void ffmpeg_movie_close(MovieWriter *context);
 static bool ffmpeg_filepath_get(MovieWriter *context,
                                 char filepath[FILE_MAX],
                                 const Scene *scene,
+                                const bke::BlenderProject *project,
                                 const RenderData *rd,
                                 bool preview,
                                 const char *suffix,
@@ -535,10 +537,10 @@ static AVFrame *generate_video_frame(MovieWriter *context, const ImBuf *input_ib
 
   /* Convert to the output pixel format, if it's different that Blender's internal one. */
   if (context->img_convert_frame != nullptr) {
-    BLI_assert(context->img_convert_ctx != nullptr);
+    BLI_assert(context->sws_ctx != nullptr);
     /* Ensure the frame we are scaling to is writable as well. */
     av_frame_make_writable(context->current_frame);
-    ffmpeg_sws_scale_frame(context->img_convert_ctx, context->current_frame, rgb_frame);
+    ffmpeg_sws_scale_frame(context->sws_ctx, context->current_frame, rgb_frame);
   }
 
   if (image != input_ibuf) {
@@ -913,14 +915,14 @@ static void set_colorspace_options(AVCodecContext *c, const ColorSpace *colorspa
     c->color_primaries = AVColorPrimaries(cicp[0]);
     c->color_trc = AVColorTransferCharacteristic(cicp[1]);
     c->colorspace = (is_rgb_format) ? AVCOL_SPC_RGB : AVColorSpace(cicp[2]);
-    c->color_range = AVCOL_RANGE_JPEG;
+    /* CICP 1 means full range, FFmpeg enum is the other way around. */
+    c->color_range = (is_rgb_format || cicp[3] == 1) ? AVCOL_RANGE_JPEG : AVCOL_RANGE_MPEG;
   }
   else if (!is_rgb_format) {
-    /* Note BT.709 is wrong for sRGB.
-     * But we have been writing sRGB like this forever, and there is the so called
-     * "Quicktime gamma shift bug" that complicates things. */
-    c->color_primaries = AVCOL_PRI_BT709;
-    c->color_trc = AVCOL_TRC_BT709;
+    /* Most colorspaces will have valid CICP values from the above but if not
+     * set to unspecified (which most players treat as sRGB) */
+    c->color_primaries = AVCOL_PRI_UNSPECIFIED;
+    c->color_trc = AVCOL_TRC_UNSPECIFIED;
     c->colorspace = AVCOL_SPC_BT709;
     /* TODO(sergey): Consider making the range an option to cover more use-cases. */
     c->color_range = AVCOL_RANGE_MPEG;
@@ -938,7 +940,7 @@ static AVStream *alloc_video_stream(MovieWriter *context,
                                     int rectx,
                                     int recty,
                                     char *error,
-                                    int error_size)
+                                    int error_maxncpy)
 {
   AVStream *st;
   const AVCodec *codec;
@@ -1055,7 +1057,7 @@ static AVStream *alloc_video_stream(MovieWriter *context,
     c->pix_fmt = ffmpeg_first_software_pixel_format(pix_fmts);
     if (c->pix_fmt == AV_PIX_FMT_NONE) {
       BLI_snprintf(error,
-                   error_size,
+                   error_maxncpy,
                    "Video codec %s does not accept CPU-backed input frames",
                    codec->name);
       av_dict_free(&opts);
@@ -1247,7 +1249,7 @@ static AVStream *alloc_video_stream(MovieWriter *context,
     char error_str[AV_ERROR_MAX_STRING_SIZE];
     av_make_error_string(error_str, AV_ERROR_MAX_STRING_SIZE, ret);
     CLOG_ERROR(&LOG, "Couldn't initialize video codec: %s\n", error_str);
-    BLI_strncpy(error, ffmpeg_last_error(), error_size);
+    BLI_strncpy(error, ffmpeg_last_error(), error_maxncpy);
     av_dict_free(&opts);
     avcodec_free_context(&c);
     context->video_codec = nullptr;
@@ -1259,7 +1261,7 @@ static AVStream *alloc_video_stream(MovieWriter *context,
   context->current_frame = alloc_frame(c->pix_fmt, c->width, c->height);
   if (context->current_frame == nullptr) {
     BLI_snprintf(error,
-                 error_size,
+                 error_maxncpy,
                  "Failed to allocate FFmpeg output frame (%s, %dx%d)",
                  av_get_pix_fmt_name(c->pix_fmt),
                  c->width,
@@ -1272,7 +1274,7 @@ static AVStream *alloc_video_stream(MovieWriter *context,
   if (c->pix_fmt == AV_PIX_FMT_RGBA && ELEM(c->colorspace, AVCOL_SPC_RGB, AVCOL_SPC_UNSPECIFIED)) {
     /* Output pixel format and colorspace is the same we use internally, no conversion needed. */
     context->img_convert_frame = nullptr;
-    context->img_convert_ctx = nullptr;
+    context->sws_ctx = nullptr;
   }
   else {
     /* Output pixel format is different, allocate frame for conversion.
@@ -1282,7 +1284,7 @@ static AVStream *alloc_video_stream(MovieWriter *context,
     context->img_convert_frame = alloc_frame(src_format, c->width, c->height);
     if (context->img_convert_frame == nullptr) {
       BLI_snprintf(error,
-                   error_size,
+                   error_maxncpy,
                    "Failed to allocate FFmpeg conversion frame (%s, %dx%d)",
                    av_get_pix_fmt_name(src_format),
                    c->width,
@@ -1292,21 +1294,20 @@ static AVStream *alloc_video_stream(MovieWriter *context,
       context->video_codec = nullptr;
       return nullptr;
     }
-    context->img_convert_ctx = ffmpeg_sws_get_context(
-        c->width,
-        c->height,
-        src_format,
-        true,
-        -1,
-        c->width,
-        c->height,
-        c->pix_fmt,
-        c->color_range == AVCOL_RANGE_JPEG,
-        c->colorspace != AVCOL_SPC_RGB ? c->colorspace : -1,
-        SWS_BICUBIC);
-    if (context->img_convert_ctx == nullptr) {
+    context->sws_ctx = ffmpeg_sws_get_context(c->width,
+                                              c->height,
+                                              src_format,
+                                              true,
+                                              -1,
+                                              c->width,
+                                              c->height,
+                                              c->pix_fmt,
+                                              c->color_range == AVCOL_RANGE_JPEG,
+                                              c->colorspace != AVCOL_SPC_RGB ? c->colorspace : -1,
+                                              SWS_BICUBIC);
+    if (context->sws_ctx == nullptr) {
       BLI_snprintf(error,
-                   error_size,
+                   error_maxncpy,
                    "Failed to initialize FFmpeg frame conversion (%s to %s)",
                    av_get_pix_fmt_name(src_format),
                    av_get_pix_fmt_name(c->pix_fmt));
@@ -1340,6 +1341,7 @@ static void ffmpeg_add_metadata_callback(void *data,
 
 static bool start_ffmpeg_impl(MovieWriter *context,
                               const Scene *scene,
+                              const bke::BlenderProject *project,
                               const RenderData *rd,
                               const ImageFormatData *imf,
                               int rectx,
@@ -1374,7 +1376,8 @@ static bool start_ffmpeg_impl(MovieWriter *context,
   }
 
   /* Determine the correct filename */
-  if (!ffmpeg_filepath_get(context, filepath, scene, rd, context->ffmpeg_preview, suffix, reports))
+  if (!ffmpeg_filepath_get(
+          context, filepath, scene, project, rd, context->ffmpeg_preview, suffix, reports))
   {
     return false;
   }
@@ -1635,6 +1638,7 @@ static void flush_delayed_frames(AVCodecContext *c, AVStream *stream, AVFormatCo
 static bool ffmpeg_filepath_get(MovieWriter *context,
                                 char filepath[FILE_MAX],
                                 const Scene *scene,
+                                const bke::BlenderProject *project,
                                 const RenderData *rd,
                                 bool preview,
                                 const char *suffix,
@@ -1662,7 +1666,7 @@ static bool ffmpeg_filepath_get(MovieWriter *context,
   BLI_strncpy(filepath, rd->pic, FILE_MAX);
 
   bke::path_templates::VariableMap template_variables;
-  BKE_add_template_variables_general(template_variables, &scene->id);
+  BKE_add_template_variables_general(template_variables, &scene->id, project);
   BKE_add_template_variables_for_render_path(template_variables, *scene);
 
   const Vector<bke::path_templates::Error> errors = BKE_path_apply_template(
@@ -1722,15 +1726,17 @@ static bool ffmpeg_filepath_get(MovieWriter *context,
 
 static void ffmpeg_get_filepath(char filepath[/*FILE_MAX*/ 1024],
                                 const Scene *scene,
+                                const bke::BlenderProject *project,
                                 const RenderData *rd,
                                 bool preview,
                                 const char *suffix,
                                 ReportList *reports)
 {
-  ffmpeg_filepath_get(nullptr, filepath, scene, rd, preview, suffix, reports);
+  ffmpeg_filepath_get(nullptr, filepath, scene, project, rd, preview, suffix, reports);
 }
 
 static MovieWriter *ffmpeg_movie_open(const Scene *scene,
+                                      const bke::BlenderProject *project,
                                       const RenderData *rd,
                                       const ImageFormatData *imf,
                                       int rectx,
@@ -1754,7 +1760,8 @@ static MovieWriter *ffmpeg_movie_open(const Scene *scene,
   context->ffmpeg_preview = preview;
   context->stamp_data = BKE_stamp_info_from_scene_static(scene);
 
-  bool success = start_ffmpeg_impl(context, scene, rd, imf, rectx, recty, suffix, reports);
+  bool success = start_ffmpeg_impl(
+      context, scene, project, rd, imf, rectx, recty, suffix, reports);
 
   if (success) {
     success = movie_audio_open(context,
@@ -1776,6 +1783,7 @@ static void end_ffmpeg_impl(MovieWriter *context, bool is_autosplit);
 
 static bool ffmpeg_movie_append(MovieWriter *context,
                                 const Scene *scene,
+                                const bke::BlenderProject *project,
                                 const RenderData *rd,
                                 const ImageFormatData *imf,
                                 int start_frame,
@@ -1805,7 +1813,8 @@ static bool ffmpeg_movie_append(MovieWriter *context,
       end_ffmpeg_impl(context, true);
       context->ffmpeg_autosplit_count++;
 
-      success &= start_ffmpeg_impl(context, scene, rd, imf, image->x, image->y, suffix, reports);
+      success &= start_ffmpeg_impl(
+          context, scene, project, rd, imf, image->x, image->y, suffix, reports);
     }
   }
 
@@ -1869,9 +1878,9 @@ static void end_ffmpeg_impl(MovieWriter *context, bool is_autosplit)
     context->audio_deinterleave_buffer = nullptr;
   }
 
-  if (context->img_convert_ctx != nullptr) {
-    ffmpeg_sws_release_context(context->img_convert_ctx);
-    context->img_convert_ctx = nullptr;
+  if (context->sws_ctx != nullptr) {
+    ffmpeg_sws_release_context(context->sws_ctx);
+    context->sws_ctx = nullptr;
   }
 }
 
@@ -1890,6 +1899,7 @@ static void ffmpeg_movie_close(MovieWriter *context)
 #endif /* WITH_FFMPEG */
 
 MovieWriter *MOV_write_begin(const Scene *scene,
+                             const bke::BlenderProject *project,
                              const RenderData *rd,
                              const ImageFormatData *imf,
                              int rectx,
@@ -1905,15 +1915,16 @@ MovieWriter *MOV_write_begin(const Scene *scene,
 
   MovieWriter *writer = nullptr;
 #ifdef WITH_FFMPEG
-  writer = ffmpeg_movie_open(scene, rd, imf, rectx, recty, reports, preview, suffix);
+  writer = ffmpeg_movie_open(scene, project, rd, imf, rectx, recty, reports, preview, suffix);
 #else
-  UNUSED_VARS(scene, rd, imf, rectx, recty, reports, preview, suffix);
+  UNUSED_VARS(scene, project, rd, imf, rectx, recty, reports, preview, suffix);
 #endif
   return writer;
 }
 
 bool MOV_write_append(MovieWriter *writer,
                       const Scene *scene,
+                      const bke::BlenderProject *project,
                       const RenderData *rd,
                       const ImageFormatData *imf,
                       int start_frame,
@@ -1928,10 +1939,10 @@ bool MOV_write_append(MovieWriter *writer,
 
 #ifdef WITH_FFMPEG
   bool ok = ffmpeg_movie_append(
-      writer, scene, rd, imf, start_frame, frame, image, suffix, reports);
+      writer, scene, project, rd, imf, start_frame, frame, image, suffix, reports);
   return ok;
 #else
-  UNUSED_VARS(scene, rd, imf, start_frame, frame, image, suffix, reports);
+  UNUSED_VARS(scene, project, rd, imf, start_frame, frame, image, suffix, reports);
   return false;
 #endif
 }
@@ -1949,6 +1960,7 @@ void MOV_write_end(MovieWriter *writer)
 
 void MOV_filepath_from_settings(char filepath[/*FILE_MAX*/ 1024],
                                 const Scene *scene,
+                                const bke::BlenderProject *project,
                                 const RenderData *rd,
                                 bool preview,
                                 const char *suffix,
@@ -1956,11 +1968,11 @@ void MOV_filepath_from_settings(char filepath[/*FILE_MAX*/ 1024],
 {
 #ifdef WITH_FFMPEG
   if (rd->im_format.imtype == R_IMF_IMTYPE_FFMPEG) {
-    ffmpeg_get_filepath(filepath, scene, rd, preview, suffix, reports);
+    ffmpeg_get_filepath(filepath, scene, project, rd, preview, suffix, reports);
     return;
   }
 #else
-  UNUSED_VARS(scene, rd, preview, suffix, reports);
+  UNUSED_VARS(scene, project, rd, preview, suffix, reports);
 #endif
   filepath[0] = '\0';
 }

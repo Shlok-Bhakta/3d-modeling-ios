@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Drive the on-screen Shift, Ctrl and Alt keys on a real simulator (issue #57).
+"""Drive the on-screen Shift, Ctrl, Alt and Cmd keys on a real simulator (issue #57).
 
 The app starts with a window-level Blender modal operator that records every
 mouse press and the modifiers Blender sees on it. Maestro then uses the belt
@@ -11,7 +11,8 @@ the touches with real timing. The recorded presses must show:
 1. a tapped (latched) Shift on the next click only,
 2. a double-tapped (locked) Ctrl on every click until it's tapped off,
 3. Alt combined with locked Ctrl,
-4. no modifiers once everything is off,
+4. a tapped Cmd, which Blender sees as its OS key, on the next click only,
+5. no modifiers once everything is off,
 
 and the belt must remember the corner it was dragged to.
 """
@@ -29,7 +30,8 @@ import time
 from pathlib import Path
 
 
-BUNDLE_ID = "com.marginallybetterapps.modeling3d"
+# Read from the app under test in main(); builds and rebrands use different identifiers.
+BUNDLE_ID = ""
 DEVICE_TYPE = "com.apple.CoreSimulator.SimDeviceType.iPad-Pro-13-inch-M5-12GB"
 CORNER_KEY = "GHOST_IOSModifierBeltCorner"
 TOP_LEFT = 0
@@ -50,12 +52,13 @@ class IOS_OT_belt_event_log(bpy.types.Operator):
 
     def modal(self, context, event):
         if event.type == 'LEFTMOUSE' and event.value in {'PRESS', 'DOUBLE_CLICK'}:
-            _events.append({"shift": event.shift, "ctrl": event.ctrl, "alt": event.alt})
+            _events.append({"shift": event.shift, "ctrl": event.ctrl, "alt": event.alt,
+                            "oskey": event.oskey})
             with open(_log_path, "w") as handle:
                 json.dump(_events, handle)
-        if event.type in {'LEFTMOUSE', 'LEFT_SHIFT', 'LEFT_CTRL', 'LEFT_ALT'}:
+        if event.type in {'LEFTMOUSE', 'LEFT_SHIFT', 'LEFT_CTRL', 'LEFT_ALT', 'OSKEY'}:
             _trace.append([time.monotonic(), event.type, event.value, event.shift, event.ctrl,
-                           event.alt])
+                           event.alt, event.oskey])
             with open(_trace_path, "w") as handle:
                 json.dump(_trace, handle)
         return {'PASS_THROUGH'}
@@ -109,6 +112,8 @@ OPEN_FLOW = '''\
     id: blender_modifier_control
 - assertVisible:
     id: blender_modifier_alt
+- assertVisible:
+    id: blender_modifier_command
 - takeScreenshot: modifier-belt-expanded
 '''
 
@@ -117,6 +122,7 @@ BELT_IDS = (
     "blender_modifier_shift",
     "blender_modifier_control",
     "blender_modifier_alt",
+    "blender_modifier_command",
 )
 # A finger tap clicks at the virtual cursor, which starts in the middle of the window.
 VIEWPORT = (0.5, 0.5)
@@ -124,13 +130,15 @@ VIEWPORT = (0.5, 0.5)
 CLICK_GAP = 1.2
 
 EXPECTED = [
-    {"shift": False, "ctrl": False, "alt": False},
-    {"shift": True, "ctrl": False, "alt": False},
-    {"shift": False, "ctrl": False, "alt": False},
-    {"shift": False, "ctrl": True, "alt": False},
-    {"shift": False, "ctrl": True, "alt": False},
-    {"shift": False, "ctrl": True, "alt": True},
-    {"shift": False, "ctrl": False, "alt": False},
+    {"shift": False, "ctrl": False, "alt": False, "oskey": False},
+    {"shift": True, "ctrl": False, "alt": False, "oskey": False},
+    {"shift": False, "ctrl": False, "alt": False, "oskey": False},
+    {"shift": False, "ctrl": True, "alt": False, "oskey": False},
+    {"shift": False, "ctrl": True, "alt": False, "oskey": False},
+    {"shift": False, "ctrl": True, "alt": True, "oskey": False},
+    {"shift": False, "ctrl": False, "alt": False, "oskey": False},
+    {"shift": False, "ctrl": False, "alt": False, "oskey": True},
+    {"shift": False, "ctrl": False, "alt": False, "oskey": False},
 ]
 
 
@@ -185,6 +193,7 @@ def touch_segments(centers: dict[str, tuple[float, float]]) -> list[list[dict]]:
     shift = centers["blender_modifier_shift"]
     control = centers["blender_modifier_control"]
     alt = centers["blender_modifier_alt"]
+    command = centers["blender_modifier_command"]
     handle = centers["blender_modifier_belt_handle"]
     # Drag the handle to the top-left quarter and let go.
     target = (0.12, 0.12)
@@ -204,6 +213,8 @@ def touch_segments(centers: dict[str, tuple[float, float]]) -> list[list[dict]]:
         tap(VIEWPORT, 0.2),                                  # 5: Ctrl
         tap(alt, 0.2) + tap(VIEWPORT, 0.6),                  # 6: Ctrl + Alt
         tap(control, 0.2) + tap(VIEWPORT, 0.6),              # 7: plain
+        tap(command, 0.2) + tap(VIEWPORT, 0.6),              # 8: Cmd latched
+        tap(VIEWPORT, 0.2),                                  # 9: plain
         tap(handle, 0.2) + drag,                             # collapse, then move
     ]
 
@@ -230,11 +241,18 @@ def wait_responsive(heartbeat: Path, steady: float = 3.0, timeout: float = 180.0
     raise RuntimeError("Blender did not become responsive")
 
 
+def bundle_identifier(app: Path) -> str:
+    with (app / "Info.plist").open("rb") as handle:
+        return plistlib.load(handle)["CFBundleIdentifier"]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--app", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
+    global BUNDLE_ID
+    BUNDLE_ID = bundle_identifier(args.app)
     output = args.output
     output.mkdir(parents=True, exist_ok=True)
 
