@@ -18,7 +18,7 @@ import time
 HERE = Path(__file__).resolve().parent
 CASES = ('middle', 'gizmos', 'touch', 'keyboard', 'pan', 'zoom', 'wheel', 'wheel-shift',
          'wheel-ctrl', 'wheel-shift-ctrl', 'wheel-alt', 'cursor', 'cursor-load', 'click',
-         'sidebar', 'preferences', 'idle', 'button-chord')
+         'sidebar', 'preferences', 'idle', 'button-chord', 'text-return')
 
 
 def run(*args, **kwargs):
@@ -325,6 +325,23 @@ def exercise(app: Path, device: str, output: Path, case, kind, method, skip_inst
                                for e in a['events']), 'native close click also reached Blender'
             assert_case('native-close', before, [dict(mouse=[0, 0], buttons=1, wait=.4),
                                                dict(mouse=[0, 0], wait=.5)], native_close)
+
+        elif case == 'text-return':
+            # #69: a hardware keyboard's Return must confirm a value typed into a Blender field.
+            before = configure(sidebar=True)
+            before = configure(sidebar_category=True, number_field=True, clear=True)
+            x, y, width, height = before['sidebar']
+            before = point_at([int(x + width * .4), int(y + height - 85)])
+            def key(usage):
+                return [dict(key=usage, phase=1, wait=.08), dict(key=usage, phase=2, wait=.08)]
+            def committed(b, a, samples):
+                keys = [(e['type'], e['value']) for e in a['events']
+                        if e['type'] in {'FOUR', 'TWO', 'RET'}]
+                assert a['frame_end'] == 42, f'Return left End at {a["frame_end"]}; keys {keys}'
+            events = [dict(mouse=[0, 0], buttons=1, wait=.4), dict(mouse=[0, 0], wait=1)]
+            events += key(0x21) + key(0x1f) + [dict(mouse=[0, 0], wait=.3)] + key(0x28)
+            events += [dict(mouse=[0, 0], wait=.5)]
+            assert_case('text-return', before, events, committed)
 
         elif case in {'click', 'sidebar'}:
             before = configure(sidebar=True)

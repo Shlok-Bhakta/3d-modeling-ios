@@ -74,6 +74,27 @@ class IOSOnscreenKeyboardTests(unittest.TestCase):
 
         self.assertIn("if (onscreen_keyboard_active && text_field.text != nil)", getter)
 
+    def test_hardware_edits_are_not_replaced_by_the_native_copy(self) -> None:
+        # #69: hardware keys edit Blender's string, so Return must not commit the native field's
+        # unchanged text. The runtime check is `simulator_hardware_input.py --case text-return`.
+        source = WINDOW_SOURCE.read_text()
+        hardware = source[
+            source.rindex("- (void)generateHardwareKeyEvents:") : source.rindex(
+                "- (void)synchronizePointerModifiers:"
+            )
+        ]
+        setup = source[
+            source.rindex("- (void)setupKeyboard:") : source.rindex("- (void)applyKeyboardSelection:")
+        ]
+        getter = source[
+            source.rindex("- (const char *)getLastKeyboardString") : source.rindex("@end")
+        ]
+
+        self.assertIn("if (is_down && onscreen_keyboard_active) {\n      text_field_stale = true;", hardware)
+        self.assertIn("text_field_stale = false;", setup)
+        self.assertLess(getter.index("if (text_field_stale) {\n      return nullptr;"),
+                        getter.index("text_field.text UTF8String"))
+
     def test_native_edits_are_forwarded_to_blender_while_typing(self) -> None:
         source = WINDOW_SOURCE.read_text()
         interface = source[

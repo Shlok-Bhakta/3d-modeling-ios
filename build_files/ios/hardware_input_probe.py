@@ -23,6 +23,7 @@ events = []
 ticks = 0
 pointer = None
 case = 'cube'
+number_field = False
 bpy.context.preferences.view.show_splash = False
 performance = dict(cpu_count=os.cpu_count(), thread_mode=bpy.context.scene.render.threads_mode,
                    render_threads=bpy.context.scene.render.threads,
@@ -44,6 +45,11 @@ class INPUT_PT_sidebar(bpy.types.Panel):
     bl_category = 'Mouse test'
 
     def draw(self, context):
+        if number_field:
+            # A tall field covers the sidebar click target used by the other fixtures.
+            row = self.layout.row()
+            row.scale_y = 5
+            row.prop(context.scene, 'frame_end')
         for index in range(60):
             self.layout.prop(context.preferences.inputs, 'use_emulate_numpad',
                              text=f'Preference {index + 1}')
@@ -121,7 +127,7 @@ class INPUT_OT_probe(bpy.types.Operator):
 
 
 def sample_impl():
-    global ticks, input_window
+    global ticks, input_window, number_field
     ticks += 1
     command = folder / 'command.json'
     if command.exists():
@@ -141,6 +147,9 @@ def sample_impl():
             area, _ = view_context()
             next(r for r in area.regions if r.type == 'UI').active_panel_category = 'Mouse test'
             area.tag_redraw()
+        if options.get('number_field'):
+            number_field = True
+            view_context()[0].tag_redraw()
         if options.get('preferences'):
             bpy.context.preferences.active_section = 'INPUT'
             bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
@@ -182,6 +191,7 @@ def sample_impl():
     state['render_engine'] = bpy.context.scene.render.engine
     state['shading_type'] = area.spaces.active.shading.type
     state['frame_current'] = bpy.context.scene.frame_current
+    state['frame_end'] = bpy.context.scene.frame_end
     timeline_area = next((a for a in window.screen.areas
                           if a.type in {'DOPESHEET_EDITOR', 'GRAPH_EDITOR'}), None)
     timeline = next((r for r in timeline_area.regions if r.type == 'WINDOW'), None) if timeline_area else None
