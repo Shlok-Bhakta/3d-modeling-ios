@@ -29,6 +29,8 @@ from package_unsigned_ipa import (
 
 SIDELOAD_BUNDLE_ID = "test.blenderfoundation.blender.ios"
 SIDELOAD_APP_NAME = "DevBlender"
+# Public releases keep the sideload bundle ID, so installed copies update in place.
+RELEASE_APP_NAME = "3D Modeling Thingy"
 EXPECTED_FRAMEWORK_COUNT = 74
 
 
@@ -92,13 +94,13 @@ def validate_source_bundle(bundle: Path, expected_framework_count: int) -> None:
         )
 
 
-def patch_sideload_identity(bundle: Path) -> None:
+def patch_sideload_identity(bundle: Path, app_name: str) -> None:
     plist_path = bundle / "Info.plist"
     with plist_path.open("rb") as handle:
         plist = plistlib.load(handle)
     plist["CFBundleIdentifier"] = SIDELOAD_BUNDLE_ID
-    plist["CFBundleName"] = SIDELOAD_APP_NAME
-    plist["CFBundleDisplayName"] = SIDELOAD_APP_NAME
+    plist["CFBundleName"] = app_name
+    plist["CFBundleDisplayName"] = app_name
     if plist.get("CFBundleExecutable") != "Blender":
         raise PackagingError("CFBundleExecutable must remain Blender")
     with plist_path.open("wb") as handle:
@@ -110,6 +112,7 @@ def package_sideload_ipa(
     output: Path,
     staging_root: Path,
     expected_framework_count: int = EXPECTED_FRAMEWORK_COUNT,
+    app_name: str = SIDELOAD_APP_NAME,
 ) -> PackageResult:
     source_bundle = source_bundle.resolve()
     output = output.resolve()
@@ -121,7 +124,7 @@ def package_sideload_ipa(
         shutil.rmtree(staging_root)
     staging_root.mkdir(parents=True)
     shutil.copytree(source_bundle, staged_bundle, symlinks=True)
-    patch_sideload_identity(staged_bundle)
+    patch_sideload_identity(staged_bundle, app_name)
     archive_bundle(staged_bundle, output)
 
     with zipfile.ZipFile(output) as archive:
@@ -151,6 +154,8 @@ def parse_arguments(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument("bundle", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--staging-root", required=True, type=Path)
+    parser.add_argument("--release", action="store_true",
+                        help=f"name the app {RELEASE_APP_NAME!r} instead of {SIDELOAD_APP_NAME!r}")
     return parser.parse_args(argv)
 
 
@@ -158,7 +163,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     arguments = parse_arguments(sys.argv[1:] if argv is None else argv)
     try:
         result = package_sideload_ipa(
-            arguments.bundle, arguments.output, arguments.staging_root
+            arguments.bundle,
+            arguments.output,
+            arguments.staging_root,
+            app_name=RELEASE_APP_NAME if arguments.release else SIDELOAD_APP_NAME,
         )
     except PackagingError as ex:
         print(json.dumps({"ok": False, "error": str(ex)}, indent=2))

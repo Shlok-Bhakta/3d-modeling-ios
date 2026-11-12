@@ -16,7 +16,7 @@ IOS_DIR = Path(__file__).resolve().parents[1]
 if str(IOS_DIR) not in sys.path:
     sys.path.insert(0, str(IOS_DIR))
 
-from package_sideload_ipa import PackagingError, package_sideload_ipa
+from package_sideload_ipa import RELEASE_APP_NAME, PackagingError, package_sideload_ipa
 
 
 class SideloadIpaTests(unittest.TestCase):
@@ -83,6 +83,23 @@ class SideloadIpaTests(unittest.TestCase):
             self.assertEqual(plist["CFBundleIdentifier"], "test.blenderfoundation.blender.ios")
             self.assertEqual(plist["CFBundleName"], "DevBlender")
             self.assertEqual(plist["CFBundleDisplayName"], "DevBlender")
+            self.assertEqual(plist["CFBundleExecutable"], "Blender")
+
+    def test_release_uses_the_public_app_name(self) -> None:
+        # Releases keep the sideload bundle ID so installed copies update in place.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "3D-Modeling-Thingy.ipa"
+
+            package_sideload_ipa(self.make_bundle(root), output, root / "staging",
+                                 app_name=RELEASE_APP_NAME)
+
+            with zipfile.ZipFile(output) as archive:
+                plist = plistlib.loads(archive.read("Payload/Blender.app/Info.plist"))
+            self.assertEqual(RELEASE_APP_NAME, "3D Modeling Thingy")
+            self.assertEqual(plist["CFBundleIdentifier"], "test.blenderfoundation.blender.ios")
+            self.assertEqual(plist["CFBundleName"], RELEASE_APP_NAME)
+            self.assertEqual(plist["CFBundleDisplayName"], RELEASE_APP_NAME)
             self.assertEqual(plist["CFBundleExecutable"], "Blender")
 
     def test_rejects_loose_static_or_shared_libraries(self) -> None:
